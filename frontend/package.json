@@ -1,0 +1,32 @@
+{
+  "name": "email-assistant",
+  "version": "1.0.0",
+  "description": "智能邮件助手桌面应用",
+  "keywords": ["email", "assistant", "electron", "react"],
+  "license": "MIT",
+  "author": "Email Assistant Team",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "concurrently -k \"npm run dev\" \"npm run electron:serve\"",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:serve": "electron .",
+    "electron:build": "electron-builder",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "antd": "^5.26.7",
+    "axios": "^1.7.9",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.0",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "vite": "^6.0.5"
+  }
+}

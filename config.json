@@ -1,0 +1,10 @@
+{
+  "mail": {
+    "refreshInterval": 15,
+    "indexedFolders": ["INBOX"]
+  },
+  "ai": {
+    "model": "all-MiniLM-L6-v2",
+    "summaryLength": 300
+  }
+}

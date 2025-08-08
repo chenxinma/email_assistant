@@ -1,0 +1,64 @@
+import axios from 'axios'
+
+// 创建axios实例
+const api = axios.create({
+  baseURL: '/api', // 使用相对路径，通过vite代理转发到后端
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// 请求拦截器
+api.interceptors.request.use(
+  (config) => {
+    // 可以在这里添加认证token等
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// 响应拦截器
+api.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  (error) => {
+    if (error.response) {
+      // 服务器响应了错误状态码
+      console.error('API Error:', error.response.status, error.response.data)
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      console.error('Network Error:', error.request)
+    } else {
+      // 其他错误
+      console.error('Error:', error.message)
+    }
+    return Promise.reject(error)
+  }
+)
+
+// API接口定义
+export const apiService = {
+  // 获取每日摘要
+  getDailySummary: () => api.get('/summary/daily'),
+  
+  // 搜索邮件
+  searchEmails: (query) => api.post('/emails/search', query),
+  
+  // 获取模板
+  getTemplates: () => api.get('/templates'),
+  
+  // 发送邮件
+  sendEmail: (email) => api.post('/emails/send', email),
+  
+  // 获取配置
+  getConfig: () => api.get('/config'),
+  
+  // 获取邮件列表
+  getEmails: (params) => api.get('/emails', { params }),
+}
+
+export default api

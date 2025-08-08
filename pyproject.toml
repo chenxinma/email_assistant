@@ -1,0 +1,39 @@
+[project]
+name = "email-assistant"
+version = "0.1.0"
+description = "email assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "chenxin.ma", email = "chenxin.ma@qq.com" }
+]
+dependencies = [
+    "filetype>=1.2.0",
+    "imapclient>=3.0.1",
+    "pandas>=2.3.1",
+    "pydantic-ai>=0.6.2",
+    "schedule>=1.2.2",
+    "sqlite-vec>=0.1.6",
+    "tqdm>=4.67.1",
+    "fastapi>=0.68.0",
+    "uvicorn>=0.15.0",
+    "sentence-transformers>=2.2.0",
+    "jieba>=0.42.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = [
+  "."
+]
+
+[project.scripts]
+email-assistant = "email_assistant:main"

@@ -1,0 +1,11 @@
+filetype>=1.2.0
+imapclient>=3.0.1
+pandas>=2.3.1
+pydantic-ai>=0.6.2
+schedule>=1.2.2
+sqlite-vec>=0.1.6
+tqdm>=4.67.1
+fastapi>=0.68.0
+uvicorn>=0.15.0
+sentence-transformers>=2.2.0
+jieba>=0.42.1
