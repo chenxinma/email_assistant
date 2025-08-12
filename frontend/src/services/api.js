@@ -59,6 +59,9 @@ export const apiService = {
   
   // 获取邮件列表
   getEmails: (params) => api.get('/emails', { params }),
+
+  // 刷新邮件
+  refreshEmails: (days) => api.post('/emails/refresh', { days }),
 }
 
 export default api

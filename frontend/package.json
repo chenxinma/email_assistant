@@ -2,7 +2,12 @@
   "name": "email-assistant",
   "version": "1.0.0",
   "description": "智能邮件助手桌面应用",
-  "keywords": ["email", "assistant", "electron", "react"],
+  "keywords": [
+    "email",
+    "assistant",
+    "electron",
+    "react"
+  ],
   "license": "MIT",
   "author": "Email Assistant Team",
   "type": "module",
@@ -17,10 +22,13 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
     "antd": "^5.26.7",
+    "autoprefixer": "^10.4.21",
     "axios": "^1.7.9",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

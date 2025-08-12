@@ -19,6 +19,7 @@ dependencies = [
     "uvicorn>=0.15.0",
     "sentence-transformers>=2.2.0",
     "jieba>=0.42.1",
+    "langextract",
 ]
 
 [tool.setuptools.packages.find]

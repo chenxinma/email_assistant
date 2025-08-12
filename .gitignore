@@ -15,3 +15,6 @@ wheels/
 # frontend models
 frontend/node_modules/
 frontend/dist/
+
+# data and config
+data/

@@ -23,11 +23,18 @@ class ConfigManager:
             config = {
                 "mail": {
                     "refreshInterval": 15,
-                    "indexedFolders": ["INBOX"]
+                    "indexedFolders": ["INBOX"],
+                    "emailAddress": "chenxin.ma@fsg.com.cn",
+                    "emailPassword": "your_email_password",
+                    "imapServer": "imaphz.qiye.163.com",
+                    "imapPort": 993,
+                    "smtpServer": "smtphz.qiye.163.com",
+                    "smtpPort": 465
                 },
                 "ai": {
-                    "model": "all-MiniLM-L6-v2",
-                    "summaryLength": 300
+                    "embeddingModel": "bge-large-zh-v1.5",
+                    "embeddingBaseUrl": "http://172.16.37.21:9997/v1",
+                    "summaryLength": 512
                 }
             }
             self.save_config(config)
