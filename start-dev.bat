@@ -1,23 +1,23 @@
 @echo off
-REM å¯åŠ¨è„šæœ¬ - åŒæ—¶å¯åŠ¨å‰ç«¯å’ŒåŽç«¯æœåŠ¡
+REM Æô¶¯½Å±¾ - Í¬Ê±Æô¶¯Ç°¶ËºÍºó¶Ë·þÎñ
 
-echo æ­£åœ¨å¯åŠ¨é‚®ä»¶åŠ©æ‰‹å¼€å‘çŽ¯å¢ƒ...
+echo ÕýÔÚÆô¶¯ÓÊ¼þÖúÊÖ¿ª·¢»·¾³...
 
-REM å¯åŠ¨åŽç«¯æœåŠ¡
-echo å¯åŠ¨åŽç«¯æœåŠ¡...
-start "åŽç«¯æœåŠ¡" /D "%~dp0" python run.py
+REM Æô¶¯ºó¶Ë·þÎñ
+echo Æô¶¯ºó¶Ë·þÎñ...
+start "ºó¶Ë·þÎñ" /D "%~dp0" uv run email-assistant
 
-REM ç­‰å¾…åŽç«¯æœåŠ¡å¯åŠ¨
+REM µÈ´ýºó¶Ë·þÎñÆô¶¯
 timeout /t 3 /nobreak >nul
 
-REM å¯åŠ¨å‰ç«¯å¼€å‘æœåŠ¡å™¨
-echo å¯åŠ¨å‰ç«¯å¼€å‘æœåŠ¡å™¨...
+REM Æô¶¯Ç°¶Ë¿ª·¢·þÎñÆ÷
+echo Æô¶¯Ç°¶Ë¿ª·¢·þÎñÆ÷...
 cd frontend
-start "å‰ç«¯å¼€å‘æœåŠ¡å™¨" npm run dev
+start "Ç°¶Ë¿ª·¢·þÎñÆ÷" npm run dev
 
-REM ç­‰å¾…å‰ç«¯æœåŠ¡å¯åŠ¨
+REM µÈ´ýÇ°¶Ë·þÎñÆô¶¯
 timeout /t 5 /nobreak >nul
 
-echo å¼€å‘çŽ¯å¢ƒå·²å¯åŠ¨!
-echo åŽç«¯API: http://localhost:8000
-echo å‰ç«¯é¡µé¢: http://localhost:3000
+echo ¿ª·¢»·¾³ÒÑÆô¶¯!
+echo ºó¶ËAPI: http://localhost:8000
+echo Ç°¶ËÒ³Ãæ: http://localhost:3000

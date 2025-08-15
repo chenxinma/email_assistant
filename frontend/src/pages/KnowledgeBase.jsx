@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Input, Button, List, Card, Typography, message, Spin } from 'antd'
+import { Input, Button, List, Card, Typography, message, Spin, Space } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { apiService } from '../services/api'
 
@@ -29,8 +29,8 @@ const KnowledgeBase = () => {
 
   return (
     <div>
-      <Title level={2}>知识库</Title>
-      <Input.Group compact style={{ marginBottom: 20 }}>
+      <Title level={2}>邮件库</Title>
+      <Space.Compact style={{ marginBottom: 20, width: '100%' }}>
         <Input
           style={{ width: 'calc(100% - 100px)' }}
           placeholder="输入关键词或问题搜索邮件内容"
@@ -41,7 +41,7 @@ const KnowledgeBase = () => {
         <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
           搜索
         </Button>
-      </Input.Group>
+      </Space.Compact>
 
       {loading ? (
         <Spin size="large" />
@@ -57,9 +57,14 @@ const KnowledgeBase = () => {
                     <div>
                       <Text type="secondary">{item.sender} | {item.date}</Text>
                       <br />
-                      <Text>{item.content}</Text>
+                      <Text
+                        ellipsis={{ symbol: '展开更多' }}
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
+                        {item.content.length > 500 ? item.content.substring(0, 500) + '...' : item.content}
+                      </Text>
                       <br />
-                      <Text type="secondary">相似度: {(item.similarity * 100).toFixed(2)}%</Text>
+                      <Text type="secondary">差异: {(item.distance).toFixed(2)}</Text>
                     </div>
                   }
                 />

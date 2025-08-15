@@ -4,7 +4,9 @@
 
 import json
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union, TypeVar
+
+ConfigValueT = TypeVar('ConfigValueT', str, int, Dict[str, Any], None)
 
 class ConfigManager:
     """配置管理类"""
@@ -48,14 +50,14 @@ class ConfigManager:
         with open(self.config_file, 'w', encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False, indent=2)
     
-    def get(self, key_path: str, default=None):
+    def get(self, key_path: str, default:ConfigValueT=None)-> ConfigValueT:
         """获取配置项"""
         keys = key_path.split('.')
         value = self.config
         try:
             for key in keys:
                 value = value[key]
-            return value
+            return value  # type: ignore
         except KeyError:
             return default
     

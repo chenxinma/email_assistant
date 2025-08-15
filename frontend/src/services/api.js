@@ -1,13 +1,17 @@
 import axios from 'axios'
 
 // 创建axios实例
+// 创建基础axios实例（非流式）
 const api = axios.create({
   baseURL: '/api', // 使用相对路径，通过vite代理转发到后端
-  timeout: 10000,
+  timeout: 30000, // 设置为30秒
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+// 浏览器环境不支持responseType: 'stream'，使用fetch API处理流式响应
+// 删除axios流式实例创建
 
 // 请求拦截器
 api.interceptors.request.use(
@@ -60,8 +64,64 @@ export const apiService = {
   // 获取邮件列表
   getEmails: (params) => api.get('/emails', { params }),
 
-  // 刷新邮件
-  refreshEmails: (days) => api.post('/emails/refresh', { days }),
+  // 刷新邮件（流式响应）
+  refreshEmails: async (days, onMessage, onComplete, onError) => {
+    try {
+      const response = await fetch('/api/emails/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ days })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      function read() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            if (onComplete) onComplete();
+            return;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          // 处理每个数据块
+          const lines = chunk.split('\n');
+          lines.forEach(line => {
+            if (line.startsWith('data: ')) {
+              const data = line.substring(6);
+              if (data != '[DONE]') {
+                try {
+                  const jsonData = JSON.parse(data);
+                  if (onMessage) onMessage(jsonData);
+                } catch (error) {
+                  console.error('解析流式数据失败:', error);
+                  if (onError) onError(error);
+                }
+              }
+            }
+          });
+
+          read();
+        }).catch(error => {
+          console.error('读取流式数据失败:', error);
+          if (onError) onError(error);
+        });
+      }
+
+      read();
+      return response;
+    } catch (error) {
+      console.error('请求失败:', error);
+      if (onError) onError(error);
+      throw error;
+    }
+  },
 }
 
 export default api

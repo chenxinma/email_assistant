@@ -1,23 +1,22 @@
 """
 邮件助手主应用模块
 """
-
-
 from contextlib import asynccontextmanager
+import json
 import sqlite3
-from turtle import title
 from typing import Any, Dict, List
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
 import sqlite_vec
-from tqdm.asyncio import tqdm
 
-from email_assistant.email_processor import EmailClient, save_emails_to_db
+from .ai_processor import AIProcessor
+from .email_extract import extract_email_info
+from .email_processor import EmailClient, EmailPresistence
 
 from .config import ConfigManager
 from .type import *
-
 
 # 配置文件路径
 CONFIG_FILE = "data/config.json"
@@ -25,95 +24,42 @@ CONFIG_FILE = "data/config.json"
 # 数据库文件路径
 DB_FILE = "data/email_assistant.db"
 
-# 初始化数据库
-def init_database():
-    """初始化数据库"""
-    conn = sqlite3.connect(DB_FILE)
-    conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
-    
-    # 创建邮件表
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS emails (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            uid INTEGER UNIQUE,
-            subject TEXT,
-            sender TEXT,
-            recipient TEXT,
-            date DATETIME,
-            content TEXT,
-            folder TEXT
-        )
-    ''')
-    
-    # 创建向量表
-    conn.execute('''
-        CREATE VIRTUAL TABLE IF NOT EXISTS email_vectors 
-        USING vec0(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            uid INTEGER,
-            embedding FLOAT[1024]  -- 使用bge-large-zh-v1.5模型的维度
-        )
-    ''')
-    
-    # 创建模板表
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS templates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            subject TEXT,
-            content TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-async def fetch_emails():
-    """从邮箱获取邮件"""
-    
-    config_manager = ConfigManager(CONFIG_FILE)
-    host = config_manager.config["mail"]["imapServer"]
-    port = config_manager.config["mail"]["imapPort"]
-    username = config_manager.config["mail"]["emailAddress"]
-    password = config_manager.config["mail"]["emailPassword"]
-    embedding_model = AsyncOpenAI(
-                        api_key="cannot be empty",
-                        base_url=config_manager.config["ai"]["embeddingBaseUrl"])
-    embedding_model_id = config_manager.config["ai"]["embeddingModel"]
-
-    email_client = EmailClient(host, port, username, password)
-    async def get_embedding(text: str) -> List[float]:
-        embeding = await embedding_model.embeddings.create(input=text, model=embedding_model_id)
-        return embeding.data[0].embedding
-    
-    if email_client.connect():
-        conn = sqlite3.connect(DB_FILE)
-        conn.enable_load_extension(True)
-        sqlite_vec.load(conn)
-        conn.enable_load_extension(False)
-
-        emails = email_client.fetch_emails()
-        async for email in tqdm(emails, desc="处理邮件"):
-            await save_emails_to_db(email, conn, get_embedding)
-        conn.commit()
-        conn.close()
-    return {"message": "邮件刷新成功"}
-
 # 应用生命周期管理
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # 应用启动时初始化
     config_manager = ConfigManager(CONFIG_FILE)
     config_manager.load_config()
-    init_database()
+    # 初始化数据库
+    EmailPresistence.init_database(db_file=DB_FILE)
+    base_url = config_manager.config["ai"]["embeddingBaseUrl"]
+    model_id = config_manager.config["ai"]["embeddingModel"]
+    aiProcessor = AIProcessor(embedding_base_url=base_url,
+                              embedding_model=model_id)
+    emailPresistence = EmailPresistence(db_file=DB_FILE, 
+                              embedding_base_url=base_url,
+                              embedding_model=model_id)
     yield {
-        "config": config_manager.config
+        "config": config_manager.config,
+        "aiProcessor": aiProcessor,
+        "emailPresistence": emailPresistence,
     }
 
 async def get_config_inject(request: Request) -> Dict[str, Any]:
     return request.state.config
+
+async def get_ai_processor_inject(request: Request) -> AIProcessor:
+    return request.state.aiProcessor
+
+async def get_email_presistence_inject(request: Request) -> EmailPresistence:
+    return request.state.emailPresistence
+
+def get_conn():
+    conn = sqlite3.connect(DB_FILE)
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
+    return conn
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -134,51 +80,55 @@ async def get_config(config: Dict[str, Any] = Depends(get_config_inject)):
     """获取配置"""
     return config
 
-from fastapi.responses import StreamingResponse
-import json
+
 
 @app.post("/api/emails/refresh")
-async def refresh_emails(days: int = 1, config: Dict[str, Any] = Depends(get_config_inject)):
+async def refresh_emails(days: int = 2, \
+                         config: Dict[str, Any] = Depends(get_config_inject),
+                         emailPresistence: EmailPresistence = Depends(get_email_presistence_inject)):
     """刷新邮件"""
     host = config["mail"]["imapServer"]
     port = config["mail"]["imapPort"]
     username = config["mail"]["emailAddress"]
     password = config["mail"]["emailPassword"]
-    embedding_model = AsyncOpenAI(
-                        api_key="cannot be empty",
-                        base_url=config["ai"]["embeddingBaseUrl"])
-    embedding_model_id = config["ai"]["embeddingModel"]
-    print(embedding_model_id)
-
-    async def get_embedding(text: str) -> List[float]:
-        embeding = await embedding_model.embeddings.create(input=text, model=embedding_model_id)
-        return embeding.data[0].embedding
-
+ 
     async def generate_stream():
         email_client = EmailClient(host, port, username, password)
         if email_client.connect():
-            conn = sqlite3.connect(DB_FILE)
-            conn.enable_load_extension(True)
-            sqlite_vec.load(conn)
-            conn.enable_load_extension(False)
-
-            emails = email_client.fetch_emails(days=days)
+            emailPresistence.connect()
+            last_uid = emailPresistence.get_last_uid()
+            print(f"最后一个UID: {last_uid}")
+            emails = email_client.fetch_emails(days=days, last_uid=last_uid)
             n_cnt = 0
             e_cnt = 0
             async for email in emails:
-                result = await save_emails_to_db(email, conn, get_embedding)
+                result = await emailPresistence.save_emails_to_db(email)
                 if result:
                     n_cnt += 1
                     yield f'data: {json.dumps({"message": "邮件处理中", "count": n_cnt, "title": email.subject})}\n\n'
                 else:
                     e_cnt += 1
                     yield f'data: {json.dumps({"message": "邮件处理失败", "count": n_cnt, "title": email.subject})}\n\n'
+                print(f"处理完成，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {email.uid}", end="\r")
+                emailPresistence.commit()
             
-            conn.commit()
-            conn.close()
+            n_cnt = 0
+            e_cnt = 0
+            attributes = extract_email_info(emailPresistence.get_noattribute_emails(), 'qwen3-coder-plus')
+            for attr in attributes:
+                if emailPresistence.save_email_attributes_to_db(attr):
+                    n_cnt += 1
+                    yield f'data: {json.dumps({"message": "邮件属性保存中", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                else:
+                    e_cnt += 1
+                    yield f'data: {json.dumps({"message": "邮件属性保存失败", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                print(f"邮件属性提取，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {attr.uid}", end="\r")
+                emailPresistence.commit()
+            emailPresistence.close()
             yield f'data: {json.dumps({"message": "邮件刷新成功", "count": n_cnt})}\n\n'
         else:
             yield f'data: {json.dumps({"message": "连接邮件服务器失败"})}\n\n'
+            emailPresistence.close()
         yield 'data: [DONE]\n\n'
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream")
@@ -188,7 +138,7 @@ async def refresh_emails(days: int = 1, config: Dict[str, Any] = Depends(get_con
 async def get_emails(folder: str = "", limit: int = 10, offset: int = 0):
     """获取邮件列表"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_conn()
         cursor = conn.cursor()
         
         if folder:
@@ -226,23 +176,20 @@ async def get_emails(folder: str = "", limit: int = 10, offset: int = 0):
 
 
 @app.post("/api/emails/search")
-async def search_emails(query: SearchQuery):
+async def search_emails(query: SearchQuery, aiProcessor: AIProcessor = Depends(get_ai_processor_inject)):
     """语义搜索邮件"""
-    # 这里需要实现实际的搜索逻辑
-    # 目前返回一个示例响应
+    conn = get_conn()
+    try:
+        results = aiProcessor.search_similar_emails(query.query, conn=conn)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"搜索邮件失败: {str(e)}")
+    finally:
+        conn.close()
     return {
         "query": query.query,
-        "results": [
-            {
-                "id": 1,
-                "subject": "示例邮件主题",
-                "sender": "example@example.com",
-                "date": "2025-08-08",
-                "content": "这是一封示例邮件的内容",
-                "similarity": 0.95
-            }
-        ]
+        "results": results
     }
+
 
 @app.get("/api/summary/daily")
 async def get_daily_summary():

@@ -20,6 +20,8 @@ dependencies = [
     "sentence-transformers>=2.2.0",
     "jieba>=0.42.1",
     "langextract",
+    "beautifulsoup4>=4.13.4",
+    "icalendar>=6.3.1",
 ]
 
 [tool.setuptools.packages.find]

@@ -19,6 +19,13 @@ class EmailVector(BaseModel):
     uid: int
     embedding: List[float]
 
+class EmailAttribute(BaseModel):
+    id: int = 0
+    uid: int
+    recipient: str = ""
+    datetime: str = ""
+    content: str = ""
+
 class Template(BaseModel):
     id: int = 0
     name: str

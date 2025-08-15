@@ -3,14 +3,12 @@
 """
 
 import sys
-from .main import run, init_database , fetch_emails
-import asyncio
+from .main import run, DB_FILE
+from .email_processor import EmailPresistence
 
 def main():
     """应用入口"""
     if '--init' in sys.argv:
-        init_database()
-    elif '--fetch' in sys.argv:
-        asyncio.run(fetch_emails())
+        EmailPresistence.init_database(DB_FILE)
     else:
         run()

@@ -5,7 +5,7 @@ echo "正在启动邮件助手开发环境..."
 
 # 启动后端服务
 echo "启动后端服务..."
-python run.py &
+uv run email-assistant &
 
 # 等待后端服务启动
 sleep 3

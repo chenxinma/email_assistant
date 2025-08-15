@@ -1,4 +1,5 @@
 import React from 'react'
+import '@ant-design/v5-patch-for-react-19';
 import { Layout, Menu, theme, message, Button } from 'antd'
 import {
   MailOutlined,
@@ -34,43 +35,26 @@ function App() {
     message.info('开始刷新邮件...')
     
     try {
-      const response = await apiService.refreshEmails(1)
-      
-      // 处理流式响应
-      const reader = response.data.getReader()
-      const decoder = new TextDecoder()
-      
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
-        
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const data = JSON.parse(line)
-              if (data.message) {
-                if (data.message.includes('失败')) {
-                  message.error(`${data.message}: ${data.title || ''}`)
-                } else if (data.message.includes('成功')) {
-                  message.success(`邮件刷新成功，共处理 ${data.count} 封邮件`)
-                } else {
-                  message.info(`${data.message}: ${data.title || ''} (${data.count || 0})`)
-                }
-              }
-            } catch (e) {
-              console.error('解析流式响应失败:', e)
-            }
+      await apiService.refreshEmails(2,
+        (data) => {
+          if (data.count> 0) {
+            message.info('收到邮件:' + data.title)
+          } else {
+            message.info('没有新的邮件了。')
           }
+        },
+        () => {
+          message.success('邮件刷新完成')
+          setRefreshing(false)
+        },
+        (error) => {
+          message.error('刷新邮件失败: ' + error.message)
+          setRefreshing(false)
         }
-      }
+      )
     } catch (error) {
       message.error('刷新邮件失败: ' + error.message)
-    } finally {
-      setRefreshing(false)
-    }
+    } 
   }
 
   const items = [
@@ -82,7 +66,7 @@ function App() {
     {
       key: 'knowledge',
       icon: <FileTextOutlined />,
-      label: '知识库',
+      label: '邮件库',
     },
     {
       key: 'sender',
