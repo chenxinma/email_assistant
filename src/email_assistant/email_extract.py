@@ -6,7 +6,6 @@ from typing import Generator, List
 
 from dotenv import load_dotenv
 from icalendar import Calendar
-import jieba
 import langextract as lx
 from langextract.data import AnnotatedDocument
 from langextract.inference import BaseLanguageModel
@@ -168,33 +167,3 @@ def extract_email_info(emails: List[Email], model_id:str) -> Generator[EmailAttr
                     row.content = e.extraction_text
             yield row
 
-def extract_tasks(text: str) -> List[str]:
-    """从文本中提取任务"""
-    tasks = []
-    
-    # 使用正则表达式匹配常见的任务关键词
-    task_patterns = [
-        r'(?:(?:需要|请|要|应该|必须|务必|得).*?)(?:完成|做|处理|执行|实施|开展|进行|推进|落实)',
-        r'(?:任务|工作|事项).*?(?:：|:)',
-        r'(?:待办|TODO|To-do).*?(?:：|:)',
-        r'- \[ \] .*',  # Markdown未完成任务项
-    ]
-    
-    for pattern in task_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        tasks.extend(matches)
-    
-    # 使用jieba分词进行更智能的识别
-    words = jieba.lcut(text)
-    task_indicators = ['任务', '工作', '待办', '计划', '安排']
-    for i, word in enumerate(words):
-        if word in task_indicators and i < len(words) - 1:
-            # 简单的任务提取逻辑
-            task = word + words[i+1] if i+1 < len(words) else word
-            tasks.append(task)
-    
-    # 去重并清理
-    tasks = list(set(tasks))
-    tasks = [task.strip(' -[]') for task in tasks if len(task.strip()) > 2]
-    
-    return tasks

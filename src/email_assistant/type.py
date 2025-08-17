@@ -1,7 +1,9 @@
 # 定义数据模型
 from datetime import datetime
 from typing import List
+from typing_extensions import Annotated
 from pydantic import BaseModel
+from pydantic.fields import Field
 
 
 class Email(BaseModel):
@@ -36,7 +38,7 @@ class SearchQuery(BaseModel):
     query: str
     folder: str = ""
 
-class DailySummary(BaseModel):
-    date: str
+class DailyMailSummary(BaseModel):
     summary: str
-    tasks: List[str]
+    tasks: List[str] = Field(default_factory=list, description="待办事项列表")
+

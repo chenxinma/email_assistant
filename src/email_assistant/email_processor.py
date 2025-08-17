@@ -202,12 +202,13 @@ class EmailClient:
 class EmailPresistence:
     def __init__(self, db_file: str, 
                 embedding_base_url:str, 
+                embedding_api_key:str="cannot be empty",
                 embedding_model: str = "bge-large-zh-v1.5") -> None:
         self.db_file = db_file
         self.conn = None
         
         self.embedding_model = AsyncOpenAI(
-                        api_key="cannot be empty",
+                        api_key=embedding_api_key,
                         base_url=embedding_base_url)
         self.embedding_model_id = embedding_model
     

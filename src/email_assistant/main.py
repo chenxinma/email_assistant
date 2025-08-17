@@ -32,12 +32,16 @@ async def lifespan(_app: FastAPI):
     config_manager.load_config()
     # 初始化数据库
     EmailPresistence.init_database(db_file=DB_FILE)
+    # 初始化AI模型
+    api_key = config_manager.config["ai"]["embeddingApiKey"]
+
     base_url = config_manager.config["ai"]["embeddingBaseUrl"]
     model_id = config_manager.config["ai"]["embeddingModel"]
     aiProcessor = AIProcessor(embedding_base_url=base_url,
                               embedding_model=model_id)
     emailPresistence = EmailPresistence(db_file=DB_FILE, 
                               embedding_base_url=base_url,
+                              embedding_api_key=api_key,
                               embedding_model=model_id)
     yield {
         "config": config_manager.config,
@@ -192,18 +196,22 @@ async def search_emails(query: SearchQuery, aiProcessor: AIProcessor = Depends(g
 
 
 @app.get("/api/summary/daily")
-async def get_daily_summary():
+async def get_daily_summary(
+    config: Dict[str, Any] = Depends(get_config_inject),
+    aiProcessor: AIProcessor = Depends(get_ai_processor_inject)):
     """获取当日邮件摘要"""
-    # 这里需要实现实际的摘要生成逻辑
-    # 目前返回一个示例响应
+    conn = get_conn()
+    whoami= config["ai"]["whoami"]
+    today = datetime.today().date()
+    summary = await aiProcessor.generate_summary(today, whoami, conn=conn)
+
+    if isinstance(summary, str):
+        raise HTTPException(status_code=500, detail=f"生成摘要失败: {summary}")
+
     return {
-        "date": "2025-08-08",
-        "summary": "今天收到了10封邮件，主要涉及项目进展和会议安排。",
-        "tasks": [
-            "完成项目报告",
-            "参加下午3点的团队会议",
-            "回复客户邮件"
-        ]
+        "date": today.strftime("%Y-%m-%d"),
+        "summary": summary.summary,
+        "tasks": summary.tasks,
     }
 
 @app.get("/api/templates")

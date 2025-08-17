@@ -36,7 +36,9 @@ class ConfigManager:
                 "ai": {
                     "embeddingModel": "bge-large-zh-v1.5",
                     "embeddingBaseUrl": "http://172.16.37.21:9997/v1",
-                    "summaryLength": 512
+                     "embeddingApiKey": "empty password",
+                    "summaryLength": 512,
+                    "whoami": "我是谁？"
                 }
             }
             self.save_config(config)

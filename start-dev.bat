@@ -1,6 +1,6 @@
 @echo off
 REM 启动脚本 - 同时启动前端和后端服务
-
+set Path=C:\Users\Administrator\.local\bin;%Path%
 echo 正在启动邮件助手开发环境...
 
 REM 启动后端服务

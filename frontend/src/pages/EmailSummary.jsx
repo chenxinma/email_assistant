@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Card, List, Typography, Spin, message } from 'antd'
 import { apiService } from '../services/api'
+import ReactMarkdown from 'react-markdown'
 
 const { Title, Text } = Typography
 
@@ -32,7 +33,7 @@ const EmailSummary = () => {
       ) : summary ? (
         <div>
           <Card title="摘要" style={{ marginBottom: 20 }}>
-            <Text>{summary.summary}</Text>
+            <ReactMarkdown>{summary.summary}</ReactMarkdown>
           </Card>
           <Card title="待办事项">
             <List
