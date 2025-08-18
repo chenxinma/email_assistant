@@ -1,12 +1,15 @@
 import React from 'react'
 import '@ant-design/v5-patch-for-react-19';
-import { Layout, Menu, theme, message, Button } from 'antd'
+import { Layout, Menu, theme, message, Button, Space } from 'antd'
 import {
   MailOutlined,
   FileTextOutlined,
   SendOutlined,
   SettingOutlined,
-  SyncOutlined,
+  MinusOutlined,
+  CloseOutlined,
+  QuestionCircleOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons'
 import { apiService } from './services/api'
 import './App.css'
@@ -15,7 +18,7 @@ import KnowledgeBase from './pages/KnowledgeBase'
 import EmailSender from './pages/EmailSender'
 import Settings from './pages/Settings'
 
-const { Header, Content, Sider } = Layout
+const { Header, Content, Footer } = Layout
 
 function App() {
   const [current, setCurrent] = React.useState('summary')
@@ -61,17 +64,17 @@ function App() {
     {
       key: 'summary',
       icon: <MailOutlined />,
-      label: '今日摘要',
+      label: '邮件摘要',
     },
     {
       key: 'knowledge',
       icon: <FileTextOutlined />,
-      label: '邮件库',
+      label: '知识库',
     },
     {
       key: 'sender',
       icon: <SendOutlined />,
-      label: '写邮件',
+      label: '智能发送',
     },
     {
       key: 'settings',
@@ -96,45 +99,50 @@ function App() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header className="header">
-        <div className="logo">邮件助手</div>
-        <div style={{ marginLeft: 'auto' }}>
-          <Button
-            type="primary"
-            icon={<SyncOutlined />}
-            onClick={handleRefresh}
-            loading={refreshing}
-            style={{ marginRight: 16 }}
-          >
-            刷新邮件
-          </Button>
+    <Layout className="dock-right">
+      <Header className="app-header">
+        <div className="header-left">
+          <Space size="middle">
+            <MailOutlined />
+            <span className="app-title">邮件助手</span>
+          </Space>
+        </div>
+        <div className="header-right">
+          <Space size="middle">
+            <Button type="text" icon={<MinusOutlined />} />
+            <Button type="text" icon={<SettingOutlined />} onClick={() => setCurrent('settings')} />
+            <Button type="text" icon={<CloseOutlined />} />
+          </Space>
         </div>
       </Header>
-      <Layout>
-        <Sider width={200}>
-          <Menu
-            mode="inline"
-            selectedKeys={[current]}
-            onSelect={(e) => setCurrent(e.key)}
-            items={items}
-            style={{ height: '100%', borderRight: 0 }}
-          />
-        </Sider>
-        <Layout style={{ padding: '24px' }}>
-          <Content
-            style={{
-              padding: 24,
-              margin: 0,
-              minHeight: 280,
-              background: colorBgContainer,
-              borderRadius: borderRadiusLG,
-            }}
-          >
-            {renderContent()}
-          </Content>
-        </Layout>
-      </Layout>
+      
+      <Menu
+        mode="horizontal"
+        selectedKeys={[current]}
+        onClick={(e) => setCurrent(e.key)}
+        items={items}
+        className="app-nav"
+      />
+      
+      <Content className="app-content">
+        <div className="content-wrapper">
+          {renderContent()}
+        </div>
+      </Content>
+      
+      <Footer className="app-footer">
+        <div className="footer-left">
+          <Space size="middle">
+            <span><button onClick={handleRefresh}>手动刷新</button></span>
+          </Space>
+        </div>
+        <div className="footer-right">
+          <Space size="middle">
+            <Button type="text" icon={<QuestionCircleOutlined />} />
+            <Button type="text" icon={<InfoCircleOutlined />} />
+          </Space>
+        </div>
+      </Footer>
     </Layout>
   )
 }

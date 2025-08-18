@@ -27,8 +27,11 @@
     "antd": "^5.26.7",
     "autoprefixer": "^10.4.21",
     "axios": "^1.7.9",
+    "github-markdown-css": "^5.8.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^15.6.1",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {

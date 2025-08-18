@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>邮件助手 - 智能邮件管理工具</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义主题 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#722ED1',
+            neutral: '#F5F7FA',
+            'neutral-dark': '#1D2129',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .dock-right {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        width: 30vw;
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 9999;
+      }
+      .transition-all-300 {
+        transition: all 300ms ease-in-out;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-neutral-dark overflow-hidden">
+  <!-- 主应用容器 - 右侧停靠 -->
+  <div class="dock-right bg-white flex flex-col">
+    <!-- 顶部标题栏 -->
+    <header class="bg-primary text-white p-4 flex justify-between items-center border-b border-primary/20">
+      <div class="flex items-center space-x-3">
+        <i class="fa fa-envelope-o text-xl"></i>
+        <h1 class="text-lg font-semibold">邮件助手</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button class="hover:text-gray-200 transition-all-300" title="最小化">
+          <i class="fa fa-window-minimize"></i>
+        </button>
+        <button class="hover:text-gray-200 transition-all-300" title="设置">
+          <i class="fa fa-cog"></i>
+        </button>
+        <button class="hover:text-gray-200 transition-all-300" title="关闭">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    </header>
+    
+    <!-- 功能导航栏 -->
+    <nav class="bg-neutral p-2 flex border-b border-gray-200">
+      <button id="summary-tab" class="flex-1 py-2 px-3 rounded-md bg-white shadow-sm font-medium text-primary flex items-center justify-center space-x-2">
+        <i class="fa fa-file-text-o"></i>
+        <span>邮件摘要</span>
+      </button>
+      <button id="knowledge-tab" class="flex-1 py-2 px-3 rounded-md text-gray-600 hover:bg-gray-100 transition-all-300 font-medium flex items-center justify-center space-x-2">
+        <i class="fa fa-database"></i>
+        <span>知识库</span>
+      </button>
+      <button id="send-tab" class="flex-1 py-2 px-3 rounded-md text-gray-600 hover:bg-gray-100 transition-all-300 font-medium flex items-center justify-center space-x-2">
+        <i class="fa fa-paper-plane-o"></i>
+        <span>智能发送</span>
+      </button>
+    </nav>
+    
+    <!-- 主内容区域 -->
+    <main class="flex-1 overflow-y-auto scrollbar-hide">
+      <!-- 1. 智能邮件摘要模块 -->
+      <section id="summary-section" class="p-4 space-y-4">
+        <!-- 日期和摘要控制 -->
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-semibold">今日邮件摘要</h2>
+          <div class="flex space-x-2">
+            <button class="px-3 py-1 text-sm bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-all-300">
+              <i class="fa fa-refresh mr-1"></i>刷新
+            </button>
+            <button class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-all-300">
+              <i class="fa fa-calendar mr-1"></i>
+              <span>今天</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 邮件统计卡片 -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+            <div class="text-gray-500 text-sm">新邮件</div>
+            <div class="text-2xl font-bold text-primary mt-1">12</div>
+          </div>
+          <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+            <div class="text-gray-500 text-sm">待处理</div>
+            <div class="text-2xl font-bold text-warning mt-1">5</div>
+          </div>
+          <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+            <div class="text-gray-500 text-sm">已完成</div>
+            <div class="text-2xl font-bold text-success mt-1">7</div>
+          </div>
+        </div>
+        
+        <!-- 邮件摘要内容 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <h3 class="font-medium text-gray-800">今日工作摘要</h3>
+          <p class="text-gray-600 text-sm leading-relaxed">
+            今日共收到12封邮件，主要涉及三个项目：市场推广方案审批（3封）、Q3季度预算调整（5封）、客户反馈处理（4封）。
+            其中需要您优先处理的是市场部提交的推广方案审批，截止日期为明天中午12点前。
+          </p>
+          <button class="text-primary text-sm hover:underline">查看完整摘要</button>
+        </div>
+        
+        <!-- 待办任务清单 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-medium text-gray-800">待办任务</h3>
+            <button class="text-xs text-primary hover:underline">全部标为已完成</button>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded transition-all-300">
+              <input type="checkbox" class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <div>
+                <div class="text-sm font-medium">审批市场推广方案</div>
+                <div class="text-xs text-gray-500">截止：明天 12:00 | 来自：市场部-张三</div>
+              </div>
+            </div>
+            
+            <div class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded transition-all-300">
+              <input type="checkbox" class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <div>
+                <div class="text-sm font-medium">回复客户关于产品功能的咨询</div>
+                <div class="text-xs text-gray-500">截止：今天 18:00 | 来自：客户-李四</div>
+              </div>
+            </div>
+            
+            <div class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded transition-all-300">
+              <input type="checkbox" class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <div>
+                <div class="text-sm font-medium">确认Q3季度预算调整方案</div>
+                <div class="text-xs text-gray-500">截止：周五 17:00 | 来自：财务部-王五</div>
+              </div>
+            </div>
+          </div>
+          
+          <button class="w-full py-2 text-sm border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-primary hover:text-primary transition-all-300">
+            <i class="fa fa-plus mr-1"></i> 添加自定义任务
+          </button>
+        </div>
+        
+        <!-- 重要邮件列表 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-medium text-gray-800">重要邮件</h3>
+            <button class="text-xs text-primary hover:underline">查看全部</button>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="border-l-4 border-primary pl-3 py-1 hover:bg-gray-50 rounded transition-all-300">
+              <div class="flex justify-between">
+                <div class="text-sm font-medium">市场推广方案审批请求</div>
+                <div class="text-xs text-gray-500">09:32</div>
+              </div>
+              <div class="text-xs text-gray-600 mt-1 line-clamp-2">
+                尊敬的领导，附件是我们部门制定的Q3季度市场推广方案，请您审阅并审批，...
+              </div>
+              <div class="mt-2 flex justify-between items-center">
+                <div class="text-xs text-gray-500">发件人：张三 &lt;zhangsan@company.com&gt;</div>
+                <button class="text-primary text-xs hover:underline">查看</button>
+              </div>
+            </div>
+            
+            <div class="border-l-4 border-warning pl-3 py-1 hover:bg-gray-50 rounded transition-all-300">
+              <div class="flex justify-between">
+                <div class="text-sm font-medium">关于客户投诉处理的紧急通知</div>
+                <div class="text-xs text-gray-500">14:15</div>
+              </div>
+              <div class="text-xs text-gray-600 mt-1 line-clamp-2">
+                有重要客户反馈产品使用问题，需要紧急处理，请查看详情并给予指示，...
+              </div>
+              <div class="mt-2 flex justify-between items-center">
+                <div class="text-xs text-gray-500">发件人：客服部 &lt;service@company.com&gt;</div>
+                <button class="text-primary text-xs hover:underline">查看</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 2. 邮件知识库系统模块 (默认隐藏) -->
+      <section id="knowledge-section" class="p-4 space-y-4 hidden">
+        <h2 class="text-lg font-semibold">邮件知识库</h2>
+        
+        <!-- 搜索区域 -->
+        <div class="relative">
+          <input type="text" placeholder="输入关键词搜索邮件内容..." 
+                 class="w-full py-3 px-4 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all-300">
+          <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary transition-all-300">
+            <i class="fa fa-search text-lg"></i>
+          </button>
+        </div>
+        
+        <!-- 搜索过滤选项 -->
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-wrap gap-2">
+          <button class="px-3 py-1 text-xs bg-primary/10 text-primary rounded-full">全部邮件</button>
+          <button class="px-3 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-all-300">收件箱</button>
+          <button class="px-3 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-all-300">已发送</button>
+          <button class="px-3 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-all-300">近1个月</button>
+          <button class="px-3 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-all-300">近3个月</button>
+          <button class="px-3 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-all-300">
+            <i class="fa fa-filter mr-1"></i>更多筛选
+          </button>
+        </div>
+        
+        <!-- 问答区域 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-4">
+          <h3 class="font-medium text-gray-800">智能问答</h3>
+          
+          <div class="space-y-4">
+            <!-- 示例问题 -->
+            <div class="flex space-x-3">
+              <div class="text-primary text-xl">
+                <i class="fa fa-user-circle-o"></i>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg rounded-tl-none max-w-[85%]">
+                <p class="text-sm">上季度的市场推广预算是多少？</p>
+              </div>
+            </div>
+            
+            <!-- 回答 -->
+            <div class="flex space-x-3">
+              <div class="text-accent text-xl">
+                <i class="fa fa-robot"></i>
+              </div>
+              <div class="bg-accent/10 p-3 rounded-lg rounded-tl-none max-w-[85%]">
+                <p class="text-sm text-gray-700">根据2023年Q2季度的邮件记录，上季度市场推广预算为150万元，其中线上推广占60%，线下活动占40%。相关审批邮件由财务部李经理于2023年4月15日发出。</p>
+                <button class="text-accent text-xs mt-1 hover:underline">查看相关邮件</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 提问框 -->
+          <div class="border-t border-gray-100 pt-3">
+            <div class="flex space-x-2">
+              <input type="text" placeholder="请输入您的问题..." 
+                     class="flex-1 py-2 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all-300">
+              <button class="bg-primary text-white p-2 rounded-lg hover:bg-primary/90 transition-all-300">
+                <i class="fa fa-paper-plane-o"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 相关邮件 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <h3 class="font-medium text-gray-800">相关邮件</h3>
+          
+          <div class="space-y-3">
+            <div class="p-2 border border-gray-100 rounded-lg hover:border-primary/30 hover:bg-primary/5 transition-all-300">
+              <div class="text-sm font-medium">关于2023年Q2季度市场推广预算的审批</div>
+              <div class="text-xs text-gray-500 mt-1">发件人：李经理 &lt;lijingli@company.com&gt; | 日期：2023-04-15</div>
+              <div class="mt-2 flex justify-between items-center">
+                <div class="text-xs text-gray-600">包含：预算、市场推广、Q2</div>
+                <button class="text-primary text-xs hover:underline">查看详情</button>
+              </div>
+            </div>
+            
+            <div class="p-2 border border-gray-100 rounded-lg hover:border-primary/30 hover:bg-primary/5 transition-all-300">
+              <div class="text-sm font-medium">Q2市场推广活动效果分析报告</div>
+              <div class="text-xs text-gray-500 mt-1">发件人：张三 &lt;zhangsan@company.com&gt; | 日期：2023-07-02</div>
+              <div class="mt-2 flex justify-between items-center">
+                <div class="text-xs text-gray-600">包含：效果分析、市场推广、预算使用</div>
+                <button class="text-primary text-xs hover:underline">查看详情</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 3. 智能邮件发送模块 (默认隐藏) -->
+      <section id="send-section" class="p-4 space-y-4 hidden">
+        <h2 class="text-lg font-semibold">智能邮件发送</h2>
+        
+        <!-- 模板选择 -->
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+          <h3 class="text-sm font-medium text-gray-700 mb-2">选择模板</h3>
+          <div class="grid grid-cols-3 gap-2">
+            <button class="py-2 text-xs border border-primary bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-all-300">
+              工作汇报
+            </button>
+            <button class="py-2 text-xs border border-gray-200 text-gray-600 rounded-md hover:bg-gray-50 transition-all-300">
+              会议邀请
+            </button>
+            <button class="py-2 text-xs border border-gray-200 text-gray-600 rounded-md hover:bg-gray-50 transition-all-300">
+              客户跟进
+            </button>
+            <button class="py-2 text-xs border border-gray-200 text-gray-600 rounded-md hover:bg-gray-50 transition-all-300">
+              请假申请
+            </button>
+            <button class="py-2 text-xs border border-gray-200 text-gray-600 rounded-md hover:bg-gray-50 transition-all-300">
+              感谢邮件
+            </button>
+            <button class="py-2 text-xs border border-dashed border-gray-300 text-gray-500 rounded-md hover:border-primary hover:text-primary transition-all-300">
+              <i class="fa fa-plus mr-1"></i> 新增
+            </button>
+          </div>
+        </div>
+        
+        <!-- 邮件编辑区域 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-4">
+          <!-- 收件人 -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">收件人</label>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span class="inline-flex items-center px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                王经理 &lt;wangjingli@company.com&gt;
+                <button class="ml-1 text-primary/70 hover:text-primary">
+                  <i class="fa fa-times-circle"></i>
+                </button>
+              </span>
+              <input type="text" placeholder="输入邮箱地址..." 
+                     class="flex-1 min-w-[120px] py-1 px-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary rounded-md transition-all-300">
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+              <span class="hover:text-primary cursor-pointer">张总监</span>
+              <span class="hover:text-primary cursor-pointer">李经理</span>
+              <span class="hover:text-primary cursor-pointer">市场部</span>
+              <span class="hover:text-primary cursor-pointer">技术部</span>
+            </div>
+          </div>
+          
+          <!-- 抄送人 -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">抄送人 (可选)</label>
+            <input type="text" placeholder="输入邮箱地址，多个地址用逗号分隔..." 
+                   class="w-full py-1 px-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary rounded-md transition-all-300">
+          </div>
+          
+          <!-- 主题 -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">主题</label>
+            <input type="text" value="[工作汇报] 本周工作进展及下周计划" 
+                   class="w-full py-1 px-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary rounded-md transition-all-300">
+          </div>
+          
+          <!-- 邮件正文 -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">正文</label>
+            <textarea rows="8" class="w-full p-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary rounded-md transition-all-300 resize-none"
+              placeholder="请输入邮件内容...">尊敬的领导：
+
+本周主要完成以下工作：
+1. 完成了[项目A]的需求分析，正在准备方案文档
+2. 与[客户B]进行了两次沟通，已确认合作意向
+3. 参加了[会议C]，并整理了会议纪要
+
+下周工作计划：
+1. 完成[项目A]的方案文档并提交审核
+2. 跟进[客户B]的合同签订事宜
+3. 协调各部门推进[项目D]的启动工作
+
+如有任何指示，请随时告知。
+
+此致
+敬礼</textarea>
+          </div>
+          
+          <!-- 关键词提示 -->
+          <div class="bg-gray-50 p-2 rounded-md text-xs text-gray-500">
+            <i class="fa fa-lightbulb-o text-warning mr-1"></i>
+            提示：邮件中可使用 [项目名称]、[客户名称] 等关键词，将自动替换为实际内容
+          </div>
+        </div>
+        
+        <!-- 发送选项 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <h3 class="text-sm font-medium text-gray-700">发送选项</h3>
+          
+          <div class="space-y-2">
+            <div class="flex items-center">
+              <input type="checkbox" id="cc-self" class="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <label for="cc-self" class="ml-2 text-sm text-gray-600">同时发送给自己</label>
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="delay-send" class="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <label for="delay-send" class="ml-2 text-sm text-gray-600">定时发送</label>
+            </div>
+            
+            <div id="send-time" class="pl-6 space-y-1 hidden">
+              <label class="block text-xs text-gray-500">发送时间</label>
+              <input type="datetime-local" class="w-full py-1 px-2 text-sm border border-gray-200 rounded-md">
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="save-template" class="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary">
+              <label for="save-template" class="ml-2 text-sm text-gray-600">保存为模板</label>
+            </div>
+          </div>
+          
+          <!-- 发送按钮 -->
+          <div class="flex justify-end space-x-3 pt-2 border-t border-gray-100">
+            <button class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-all-300">
+              保存草稿
+            </button>
+            <button class="px-6 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary/90 transition-all-300 shadow-sm">
+              发送邮件
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <!-- 底部状态栏 -->
+    <footer class="bg-neutral py-2 px-4 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+      <div>
+        <span class="mr-3"><i class="fa fa-check-circle text-success mr-1"></i>已同步</span>
+        <span>最后同步：10:30</span>
+      </div>
+      <div class="flex space-x-3">
+        <button class="hover:text-primary transition-all-300" title="帮助中心">
+          <i class="fa fa-question-circle"></i>
+        </button>
+        <button class="hover:text-primary transition-all-300" title="关于我们">
+          <i class="fa fa-info-circle"></i>
+        </button>
+      </div>
+    </footer>
+  </div>
+  
+  <!-- JavaScript 功能实现 -->
+  <script>
+    // 功能切换逻辑
+    const summaryTab = document.getElementById('summary-tab');
+    const knowledgeTab = document.getElementById('knowledge-tab');
+    const sendTab = document.getElementById('send-tab');
+    
+    const summarySection = document.getElementById('summary-section');
+    const knowledgeSection = document.getElementById('knowledge-section');
+    const sendSection = document.getElementById('send-section');
+    
+    // 切换到邮件摘要
+    summaryTab.addEventListener('click', () => {
+      // 更新标签样式
+      summaryTab.classList.add('bg-white', 'shadow-sm', 'text-primary');
+      summaryTab.classList.remove('text-gray-600', 'hover:bg-gray-100');
+      
+      knowledgeTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      knowledgeTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      sendTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      sendTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      // 显示对应内容
+      summarySection.classList.remove('hidden');
+      knowledgeSection.classList.add('hidden');
+      sendSection.classList.add('hidden');
+    });
+    
+    // 切换到知识库
+    knowledgeTab.addEventListener('click', () => {
+      // 更新标签样式
+      knowledgeTab.classList.add('bg-white', 'shadow-sm', 'text-primary');
+      knowledgeTab.classList.remove('text-gray-600', 'hover:bg-gray-100');
+      
+      summaryTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      summaryTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      sendTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      sendTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      // 显示对应内容
+      knowledgeSection.classList.remove('hidden');
+      summarySection.classList.add('hidden');
+      sendSection.classList.add('hidden');
+    });
+    
+    // 切换到智能发送
+    sendTab.addEventListener('click', () => {
+      // 更新标签样式
+      sendTab.classList.add('bg-white', 'shadow-sm', 'text-primary');
+      sendTab.classList.remove('text-gray-600', 'hover:bg-gray-100');
+      
+      summaryTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      summaryTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      knowledgeTab.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      knowledgeTab.classList.add('text-gray-600', 'hover:bg-gray-100');
+      
+      // 显示对应内容
+      sendSection.classList.remove('hidden');
+      summarySection.classList.add('hidden');
+      knowledgeSection.classList.add('hidden');
+    });
+    
+    // 定时发送选项逻辑
+    const delaySendCheckbox = document.getElementById('delay-send');
+    const sendTimeDiv = document.getElementById('send-time');
+    
+    delaySendCheckbox.addEventListener('change', () => {
+      if (delaySendCheckbox.checked) {
+        sendTimeDiv.classList.remove('hidden');
+      } else {
+        sendTimeDiv.classList.add('hidden');
+      }
+    });
+    
+    // 初始化当前日期时间作为默认定时发送时间
+    const now = new Date();
+    // 设置为30分钟后
+    now.setMinutes(now.getMinutes() + 30);
+    // 格式化时间为datetime-local所需格式
+    const formattedDateTime = now.toISOString().slice(0, 16);
+    document.querySelector('input[type="datetime-local"]').value = formattedDateTime;
+  </script>
+</body>
+</html>

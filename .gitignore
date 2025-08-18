@@ -18,3 +18,5 @@ frontend/dist/
 
 # data and config
 data/
+
+logs/

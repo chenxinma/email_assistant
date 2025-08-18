@@ -1,9 +1,10 @@
 # 定义数据模型
 from datetime import datetime
-from typing import List
-from typing_extensions import Annotated
+
+from typing import List, Optional, Sequence
 from pydantic import BaseModel
-from pydantic.fields import Field
+from pydantic_xml import BaseXmlModel, element, wrapped
+
 
 
 class Email(BaseModel):
@@ -38,7 +39,19 @@ class SearchQuery(BaseModel):
     query: str
     folder: str = ""
 
-class DailyMailSummary(BaseModel):
-    summary: str
-    tasks: List[str] = Field(default_factory=list, description="待办事项列表")
+class MailInfo(BaseXmlModel):
+    recipient: str = element(tag="Recipient")
+    attention_datetime: str = element(tag="AttentionDatetime")
+    content: str = element(tag="Content")
+
+class MailSummaryPrompt(BaseXmlModel):
+    user: str = element(tag="User")
+    work_content: str = element(tag="WorkContent")
+    history_daily_summary: Optional[str] = element(tag="HistoryDailySummary")
+    mail_contents: List[MailInfo] = wrapped(
+        "MailContents",
+        element(tag="Mail", default_factory=list)
+    )
+
+
 

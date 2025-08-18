@@ -4,19 +4,20 @@
 from contextlib import asynccontextmanager
 import json
 import sqlite3
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from openai import AsyncOpenAI
 import sqlite_vec
 
-from .ai_processor import AIProcessor
+from .ai_processor import AIProcessor, AIProcessorException
+from .config import ConfigManager
 from .email_extract import extract_email_info
 from .email_processor import EmailClient, EmailPresistence
-
-from .config import ConfigManager
 from .type import *
+from .log_config import setup_logging
+
+logger = setup_logging(__name__)
 
 # 配置文件路径
 CONFIG_FILE = "data/config.json"
@@ -203,16 +204,15 @@ async def get_daily_summary(
     conn = get_conn()
     whoami= config["ai"]["whoami"]
     today = datetime.today().date()
-    summary = await aiProcessor.generate_summary(today, whoami, conn=conn)
+    try:
+        summary = await aiProcessor.generate_summary(today, whoami, conn=conn)
 
-    if isinstance(summary, str):
-        raise HTTPException(status_code=500, detail=f"生成摘要失败: {summary}")
-
-    return {
-        "date": today.strftime("%Y-%m-%d"),
-        "summary": summary.summary,
-        "tasks": summary.tasks,
-    }
+        return {
+            "date": today.strftime("%Y-%m-%d"),
+            "summary": summary
+        }
+    except AIProcessorException as e:
+        raise HTTPException(status_code=500, detail=e)
 
 @app.get("/api/templates")
 async def get_templates():

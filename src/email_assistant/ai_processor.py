@@ -2,19 +2,29 @@
 AI处理模块
 """
 import datetime
-import json
 import re
 import sqlite3
 import textwrap
 from typing import List, Optional, Union
 
+import cachetools
 import jieba
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
 from sqlite_vec import serialize_float32
 
 from .models import qwen
-from .type import DailyMailSummary
+from .type import MailInfo, MailSummaryPrompt
+import logging
+
+summary_cache = cachetools.LRUCache(maxsize=100)
+
+logger = logging.getLogger(__name__)
+
+class AIProcessorException(Exception):
+    """AI处理异常"""
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 class AIProcessor:
@@ -28,55 +38,77 @@ class AIProcessor:
         self.embedding_model_id = embedding_model
         # 初始化摘要生成agent
         self.summary_agent = Agent(
-            qwen("qwen-turbo"),  # 使用较小的模型以节省成本
-            output_type=DailyMailSummary,
+            qwen("qwen3-coder-flash"),  # 使用较小的模型以节省成本
+            output_type=str,
             instructions=textwrap.dedent("""
             你是一个专业的邮件摘要生成器。
             你的任务是根据提供的邮件内容生成简洁、准确的摘要，突出关键信息和待办事项。
-
+            
             - 输出的摘要文本采用Markdown格式。
-            - 对于收件对象不是涉及你的邮件，只要简单描述一下，不要详细展开，不要生成代办事项。
-            - 对于收件对象是涉及你的邮件，要详细展开，包括要关注的时间、待任务等。
+            - 把与你<User/>相关的内如放到前面，把与你<User/>无关的内如放到后面。
             """)
         )
 
-    def _make_mail_summary_prompt(self, whoami:str, summary: Optional[DailyMailSummary], email_info_list: List[dict])->str:
-        return textwrap.dedent(
-                        f"""你是{whoami}，基于以下邮件内容生成摘要，重点与你有关的关键信息和待办事项。
-                        以下是已经摘录的邮件摘要和代办事项:
-                        {summary.model_dump_json() if isinstance(summary, DailyMailSummary) else ''}
-                        需要根据以上摘要和代办事项，继续摘录新的邮件内容。
-                        新的邮件内容:
-                        {json.dumps(email_info_list, ensure_ascii=False)}
-                        """)
+    def _make_mail_summary_prompt(self, whoami:str, summary: Optional[str], email_info_list: List[MailInfo])->str:
+        prompt = MailSummaryPrompt(
+            user=f"你是{whoami}",
+            work_content="结合历史摘要<HistoryDailySummary/>和新的邮件内容<MailContents/>输出完整的摘要。注意不要丢失历史摘要的信息。",
+            history_daily_summary=summary,
+            mail_contents=email_info_list
+        )
+        prompt_str = prompt.to_xml(encoding='UTF-8',
+                             standalone=True).decode('utf-8') # pyright: ignore[reportReturnType, reportAttributeAccessIssue]
+        logger.info(prompt_str)
+        return prompt_str
 
-
-    async def generate_summary(self, date: datetime.date, whoami:str, conn: sqlite3.Connection) -> Union[DailyMailSummary, str]:
-
+    async def generate_summary(self, date: datetime.date, whoami:str, conn: sqlite3.Connection) -> str:
         """生成日期摘要"""
         # 连接数据库
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
-        # 查询指定日期的邮件属性数据
-        cursor.execute(
+
+        count = 0
+        row = cursor.execute(
             """
             SELECT 
-                emails.uid, 
-                email_attributes.recipient, 
-                email_attributes.datetime,
-                email_attributes.content
+                count(1)
             FROM emails
             INNER JOIN email_attributes
             ON emails.uid = email_attributes.uid
             WHERE emails.date between date(?) and date(?, '+1 day')
             """,
             [date.isoformat(), date.isoformat()]
+        ).fetchone()
+        if row:
+            count = row[0]
+            if count == 0:
+                raise AIProcessorException(f"{date.strftime('%Y-%m-%d')} 没有邮件内容")
+            
+        # 根据whoami count date 查询缓存
+        key = f"{whoami}_{count}_{date.isoformat()}"
+        if key in summary_cache:
+            return summary_cache[key]
+
+        # 查询指定日期的邮件属性数据
+        cursor.execute(
+            """
+            SELECT 
+                emails.uid, 
+                email_attributes.recipient || ' ' || emails.recipient as recipient, 
+                email_attributes.datetime,
+                email_attributes.content
+            FROM emails
+            INNER JOIN email_attributes
+            ON emails.uid = email_attributes.uid
+            WHERE emails.date between date(?) and date(?, '+1 day')
+            order by emails.uid
+            """,
+            [date.isoformat(), date.isoformat()]
         )
         
         rows = cursor.fetchall()
         if not rows:
-            return f"{date.strftime('%Y-%m-%d')} 没有找到邮件内容"
+            raise AIProcessorException(f"{date.strftime('%Y-%m-%d')} 没有邮件内容")
 
         # 初始化摘要内容
         char_count = 0
@@ -90,17 +122,18 @@ class AIProcessor:
             attention_datetime = row['datetime'] or ''
             
             # 构造邮件信息
-            email_info = textwrap.dedent(
-                f"""- 收件人: {recipient}
-                      要关注的时间: {attention_datetime}
-                      内容: {content}
-                """)
-            
-            # 如果当前摘要加上新邮件信息超过1000字符，或者这是第一条邮件，则生成摘要
-            if char_count + len(email_info) > 1000:
+            email_info = MailInfo(
+                recipient=recipient,
+                attention_datetime=attention_datetime,
+                content=content
+            )
+            mail_info_length = len(email_info.to_xml(encoding='UTF-8').decode('utf-8')) # pyright: ignore[reportAttributeAccessIssue]
+
+            # 如果当前摘要加上新邮件信息超过2000字符，或者这是第一条邮件，则生成摘要
+            if char_count + mail_info_length > 2000:
                 # 调用agent生成摘要
-                result = await self.summary_agent.run(
-                    self._make_mail_summary_prompt(whoami, summary, email_info_list))
+                prompt = self._make_mail_summary_prompt(whoami, summary, email_info_list)
+                result = await self.summary_agent.run(prompt)
 
                 summary = result.output
                 char_count = result.usage().response_tokens or 0
@@ -108,15 +141,17 @@ class AIProcessor:
                 email_info_list.clear()
 
             email_info_list.append(email_info)
-            char_count += len(email_info)
+            char_count += mail_info_length
             
         # 处理最后一批邮件内容
         if len(email_info_list) > 0:
-            result = await self.summary_agent.run(
-                self._make_mail_summary_prompt(whoami, summary, email_info_list))
+            prompt = self._make_mail_summary_prompt(whoami, summary, email_info_list)
+            result = await self.summary_agent.run(prompt)
+            summary_cache[key] = result.output
+
             return result.output
         else:
-            return f"{date.strftime('%Y-%m-%d')} 的邮件摘要生成失败"
+            raise AIProcessorException(f"{date.strftime('%Y-%m-%d')} 的邮件摘要生成失败")
 
     
     def extract_tasks(self, text: str) -> List[str]:
