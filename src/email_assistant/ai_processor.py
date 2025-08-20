@@ -115,7 +115,7 @@ class AIProcessor:
         email_info_list = []
         summary = None
         
-        # 逐条处理邮件内容，控制每次传递给agent的内容小于1000字符
+        # 逐条处理邮件内容，控制每次传递给agent的内容小于2000字符
         for row in rows:
             recipient = row['recipient'] or ''
             content = row['content'] or ''
