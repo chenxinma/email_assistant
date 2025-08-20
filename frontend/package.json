@@ -11,15 +11,17 @@
   "license": "MIT",
   "author": "Email Assistant Team",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "scripts": {
-    "start": "concurrently -k \"npm run dev\" \"npm run electron:serve\"",
+    "start": "electron-forge start",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "electron:serve": "electron .",
     "electron:build": "electron-builder",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
@@ -27,6 +29,8 @@
     "antd": "^5.26.7",
     "autoprefixer": "^10.4.21",
     "axios": "^1.7.9",
+    "dotenv": "^17.2.1",
+    "electron-squirrel-startup": "^1.0.1",
     "github-markdown-css": "^5.8.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -35,10 +39,30 @@
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.8.3",
+    "@electron-forge/maker-deb": "^7.8.3",
+    "@electron-forge/maker-rpm": "^7.8.3",
+    "@electron-forge/maker-squirrel": "^7.8.3",
+    "@electron-forge/maker-zip": "^7.8.3",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.8.3",
+    "@electron-forge/plugin-fuses": "^7.8.3",
+    "@electron/fuses": "^1.8.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.2.0",
     "electron": "^37.2.6",
-    "electron-builder": "^26.0.12",
     "vite": "^6.0.5"
+  },
+  "config": {
+	  "forge": {
+		  "packagerConfig": {},
+		  "makers": [
+		    {
+				"name": "@electron-forge/maker-squirrel",
+				"config": {
+					"name": "邮件助手"
+				}
+		    }
+		  ]
+	  }
   }
 }

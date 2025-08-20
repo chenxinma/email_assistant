@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 import sqlite_vec
 
 from .ai_processor import AIProcessor, AIProcessorException
@@ -72,6 +73,17 @@ app = FastAPI(
     description="智能邮件管理、摘要生成和知识库系统",
     version="0.1.0",
     lifespan=lifespan
+)
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # API路由
@@ -185,7 +197,7 @@ async def search_emails(query: SearchQuery, aiProcessor: AIProcessor = Depends(g
     """语义搜索邮件"""
     conn = get_conn()
     try:
-        results = aiProcessor.search_similar_emails(query.query, conn=conn)
+        results = await aiProcessor.search_similar_emails(query.query, conn=conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索邮件失败: {str(e)}")
     finally:
@@ -194,7 +206,6 @@ async def search_emails(query: SearchQuery, aiProcessor: AIProcessor = Depends(g
         "query": query.query,
         "results": results
     }
-
 
 @app.get("/api/summary/daily")
 async def get_daily_summary(

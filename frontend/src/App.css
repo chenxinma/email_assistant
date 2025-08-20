@@ -1,11 +1,11 @@
 .dock-right {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 0;
   height: 100vh;
   /* width: 20vh; */
-  min-width: 320px;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  min-width: 380px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 1;
 }
 
@@ -18,6 +18,14 @@
   color: white;
   height: 56px;
   line-height: 56px;
+}
+
+.draggable-header {
+  -webkit-app-region: drag;
+}
+
+.draggable-header .ant-btn {
+  -webkit-app-region: no-drag;
 }
 
 .header-left, .header-right {

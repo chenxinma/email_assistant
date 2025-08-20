@@ -6,7 +6,6 @@ import sqlite3
 import sqlite_vec
 from email_assistant.main import DB_FILE
 from email_assistant.ai_processor import AIProcessor, summary_cache
-from email_assistant.type import DailyMailSummary
 from email_assistant.log_config import setup_logging
 
 logger = setup_logging(__name__)
@@ -42,7 +41,7 @@ class TestAIProcessorGenerateSummary(unittest.IsolatedAsyncioTestCase):
         result = await self.processor.generate_summary(test_date, "测试用户", self.conn)
 
         # 验证结果
-        self.assertIsInstance(result, DailyMailSummary)
+        self.assertIsInstance(result, str)
         logger.info("="*20)
         logger.info(result)
 

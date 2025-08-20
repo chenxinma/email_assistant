@@ -197,6 +197,7 @@ class AIProcessor:
         """搜索相似邮件"""
         # 生成查询向量
         query_embedding = await self.generate_embedding(query)
+        logger.info(f"query: {query}")
         
         # 连接数据库
         conn.row_factory = sqlite3.Row
@@ -234,7 +235,7 @@ class AIProcessor:
                 ORDER BY vec.distance ASC
                 """,
                 [serialize_float32(query_embedding), top_k, folder])
-    
+
         else:
             cursor.execute(
                 """

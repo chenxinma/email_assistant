@@ -23,11 +23,8 @@ const { Header, Content, Footer } = Layout
 function App() {
   const [current, setCurrent] = React.useState('summary')
   const [refreshing, setRefreshing] = React.useState(false)
-  
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken()
-  
+ 
+    
   const handleRefresh = async () => {
     if (refreshing) {
       message.warning('邮件正在刷新中，请稍候...')
@@ -100,7 +97,7 @@ function App() {
 
   return (
     <Layout className="dock-right">
-      <Header className="app-header">
+      <Header className="app-header draggable-header">
         <div className="header-left">
           <Space size="middle">
             <MailOutlined />
@@ -109,9 +106,8 @@ function App() {
         </div>
         <div className="header-right">
           <Space size="middle">
-            <Button type="text" icon={<MinusOutlined />} />
             <Button type="text" icon={<SettingOutlined />} onClick={() => setCurrent('settings')} />
-            <Button type="text" icon={<CloseOutlined />} />
+            <Button type="text" icon={<CloseOutlined />} onClick={() => window.electronAPI.closeWindow()} />
           </Space>
         </div>
       </Header>
@@ -133,7 +129,7 @@ function App() {
       <Footer className="app-footer">
         <div className="footer-left">
           <Space size="middle">
-            <span><button onClick={handleRefresh}>手动刷新</button></span>
+            <Button onClick={handleRefresh}>收邮件</Button>
           </Space>
         </div>
         <div className="footer-right">

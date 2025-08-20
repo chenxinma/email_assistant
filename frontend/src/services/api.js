@@ -3,7 +3,7 @@ import axios from 'axios'
 // 创建axios实例
 // 创建基础axios实例（非流式）
 const api = axios.create({
-  baseURL: '/api', // 使用相对路径，通过vite代理转发到后端
+  baseURL: 'http://localhost:8000/api', // 使用相对路径，通过vite代理转发到后端
   timeout: 30000, // 设置为30秒
   headers: {
     'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ export const apiService = {
   // 刷新邮件（流式响应）
   refreshEmails: async (days, onMessage, onComplete, onError) => {
     try {
-      const response = await fetch('/api/emails/refresh', {
+      const response = await fetch('http://localhost:8000/api/emails/refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
