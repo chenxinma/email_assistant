@@ -1,10 +1,21 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
+const { PythonShell } = require('python-shell')
 const path = require('path')
 console.log(__dirname);
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit()
 }
+// let options = {
+//   mode: 'text',
+//   pythonPath: 'D:/Work/python/email_assistant/.venv/Scripts/python',
+//   pythonOptions: ['-u'],
+//   scriptPath: 'D:/Work/python/email_assistant',
+// }
+// PythonShell.run("run.py", options, function (err, results) {
+//   console.log('results: %j', results);
+//   if (err) console.log(err)
+// })
 
 const createWindow = () => {
   // Create the browser window.
@@ -26,8 +37,7 @@ const createWindow = () => {
     mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
-  }
-  
+  }  
 }
 
 // This method will be called when Electron has finished

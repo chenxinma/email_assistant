@@ -4,8 +4,8 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
-	tmpdir: "D:/tmp/electron-temp",
-	download: {
+    tmpdir: "D:/tmp/electron-temp",
+    download: {
       mirror: "https://npmmirror.com/mirrors/electron/",
       cache: "./electron-cache"
     }
@@ -15,6 +15,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {},
+      platforms: ["win32"]
     },
     {
       name: '@electron-forge/maker-zip',

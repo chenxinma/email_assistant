@@ -1,6 +1,7 @@
 """
 邮件助手主应用模块
 """
+import os
 from contextlib import asynccontextmanager
 import json
 import sqlite3
@@ -21,10 +22,10 @@ from .log_config import setup_logging
 logger = setup_logging(__name__)
 
 # 配置文件路径
-CONFIG_FILE = "data/config.json"
+CONFIG_FILE = os.environ.get("CONFIG_FILE", "data/config.json")
 
 # 数据库文件路径
-DB_FILE = "data/email_assistant.db"
+DB_FILE = os.environ.get("DB_FILE", "data/email_assistant.db")
 
 # 应用生命周期管理
 @asynccontextmanager
