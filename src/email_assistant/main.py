@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite_vec
 
-from .ai_processor import AIProcessor, AIProcessorException
+from .ai_processor import AIProcessor, AIProcessorException, AIProcessorNoDataException
 from .config import ConfigManager
 from .email_extract import extract_email_info
 from .email_processor import EmailClient, EmailPresistence
@@ -222,8 +222,11 @@ async def get_daily_summary(
             "date": today.strftime("%Y-%m-%d"),
             "summary": summary
         }
+    except AIProcessorNoDataException as e:
+        raise HTTPException(status_code=404, detail=e.message_text)
     except AIProcessorException as e:
-        raise HTTPException(status_code=500, detail=e)
+        raise HTTPException(status_code=500, detail=e.message_text)
+
 
 @app.get("/api/templates")
 async def get_templates():

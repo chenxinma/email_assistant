@@ -25,7 +25,14 @@ class AIProcessorException(Exception):
     """AI处理异常"""
     def __init__(self, message: str):
         super().__init__(message)
+        self._message = message
+    
+    @property
+    def message_text(self):
+        return self._message
 
+class AIProcessorNoDataException(AIProcessorException):
+    pass
 
 class AIProcessor:
     """AI处理类"""
@@ -82,7 +89,7 @@ class AIProcessor:
         if row:
             count = row[0]
             if count == 0:
-                raise AIProcessorException(f"{date.strftime('%Y-%m-%d')} 没有邮件内容")
+                raise AIProcessorNoDataException(f"{date.strftime('%Y-%m-%d')} 没有邮件内容")
             
         # 根据whoami count date 查询缓存
         key = f"{whoami}_{count}_{date.isoformat()}"
