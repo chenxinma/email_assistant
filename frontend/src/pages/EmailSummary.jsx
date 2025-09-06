@@ -29,7 +29,7 @@ const EmailSummary = () => {
   }
 
   return (
-    <div className="email-summary">
+    <div className="email-summary content-wrapper">
       {/* 日期和摘要控制 */}
       <div className="flex justify-between items-center mb-4">
         <Title level={4} className="mb-0">今日邮件摘要</Title>

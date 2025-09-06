@@ -52,4 +52,18 @@ code {
   .transition-all-300 {
     transition: all 300ms ease-in-out;
   }
+
+   .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #9ca3af; /* gray-400 */
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+  }
 }

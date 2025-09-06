@@ -13,7 +13,7 @@ timeout /t 3 /nobreak >nul
 REM 启动前端开发服务器
 echo 启动前端开发服务器...
 cd frontend
-start "前端开发服务器" npm run start
+start "前端开发服务器" npm run dev
 
 REM 等待前端服务启动
 timeout /t 5 /nobreak >nul

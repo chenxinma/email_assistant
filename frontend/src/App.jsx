@@ -121,9 +121,7 @@ function App() {
       />
       
       <Content className="app-content">
-        <div className="content-wrapper">
-          {renderContent()}
-        </div>
+        {renderContent()}
       </Content>
       
       <Footer className="app-footer">
