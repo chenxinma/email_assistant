@@ -37,10 +37,10 @@ class AIProcessorNoDataException(AIProcessorException):
 class AIProcessor:
     """AI处理类"""
     
-    def __init__(self, embedding_base_url:str, embedding_model: str = "bge-large-zh-v1.5"):
+    def __init__(self, embedding_base_url:str, embedding_api_key: str="empty", embedding_model: str = "bge-large-zh-v1.5"):
         # 初始化模型
         self.embedding_model = AsyncOpenAI(
-                        api_key="cannot be empty",
+                        api_key=embedding_api_key,
                         base_url=embedding_base_url)
         self.embedding_model_id = embedding_model
         # 初始化摘要生成agent

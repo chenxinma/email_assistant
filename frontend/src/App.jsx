@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import '@ant-design/v5-patch-for-react-19';
-import { Layout, Menu, theme, message, Button, Space } from 'antd'
+import { Layout, Menu, message, Button, Space } from 'antd'
 import {
   MailOutlined,
   FileTextOutlined,
@@ -23,8 +23,23 @@ const { Header, Content, Footer } = Layout
 function App() {
   const [current, setCurrent] = React.useState('summary')
   const [refreshing, setRefreshing] = React.useState(false)
- 
-    
+
+  // 添加定时刷新的useEffect
+  useEffect(() => {
+    // 定时刷新的时间间隔（毫秒），这里设置为5分钟刷新一次
+    const refreshInterval = 5 * 60 * 1000; 
+
+    // 设置定时器
+    const timer = setInterval(() => {
+      handleRefresh();
+    }, refreshInterval);
+
+    // 组件卸载时清除定时器
+    return () => {
+      clearInterval(timer);
+    };
+  }, [refreshing]); // 依赖项数组中包含refreshing状态
+
   const handleRefresh = async () => {
     if (refreshing) {
       message.warning('邮件正在刷新中，请稍候...')

@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { apiService } from '../services/api'
-import { message, Input, Button, Card, Avatar, Space, Typography, Spin, Layout } from 'antd'
+import { message, Input, Button, Card, Avatar, Space, Typography, Spin, Flex } from 'antd'
 import { SendOutlined, UserOutlined, MessageOutlined, RightCircleFilled } from '@ant-design/icons'
 
-const { Header, Content, Footer } = Layout;
 const { Text } = Typography
 const { TextArea } = Input
 
@@ -105,73 +104,68 @@ const ChatPage = () => {
   }
 
   return (
-    <div className='flex flex-col h-full'>
-      <div className='flex flex-1 overflow-y-auto scrollbar-thin' style={{paddingRight: 10, paddingLeft: 10, marginTop: 10}}>
-        <div className="flex flex-col max-w-3xl mx-auto space-y-6">
+    <Flex vertical className='h-full'>
+      <Flex className='overflow-y-auto scrollbar-thin h-full' >
+        <Flex vertical gap="small" className='content-wrapper' >
           {messages.map((msg, index) => (
-            <div 
+            <Flex  
               key={index} 
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              justify={msg.role === 'user' ? 'flex-end' : 'flex-start'}
             >
-              <div className={`flex ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <Avatar 
-                  icon={msg.role === 'user' ? <UserOutlined /> : <MessageOutlined />} 
-                  className={`mr-2 ${msg.role === 'user' ? 'ml-2 mr-0 bg-blue-100' : 'bg-green-100'}`}
-                />
-                <div>
-                  <Card 
-                    className={`p-3 ${msg.role === 'user' ? 'bg-blue-50' : 'bg-white'}`}
-                    size="small"
-                  >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                    <Text type="secondary" className="text-xs block mt-1">
-                      {msg.timestamp}
-                    </Text>
-                  </Card>
-                </div>
-              </div>
-            </div>
+              <Card 
+                className={`p-3 ${msg.role === 'user' ? 'bg-blue-50' : 'bg-white'}`}
+                size="small"
+              >
+                <Flex justify={msg.role === 'user' ? 'flex-end' : 'flex-start'}>
+                  <Avatar 
+                    icon={msg.role === 'user' ? <UserOutlined /> : <MessageOutlined />} 
+                    className={`${msg.role === 'user' ? 'bg-blue-100' : 'bg-green-100'}`}
+                  />
+                </Flex>
+                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <Text type="secondary" className="text-xs block mt-1">
+                  {msg.timestamp}
+                </Text>
+              </Card>
+            </Flex>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="flex">
+            <Flex justify="flex-start" vertical={false}>
+              <Card 
+                className="p-3 bg-white" 
+                size="small"
+              >
                 <Avatar icon={<MessageOutlined />} className="mr-2 bg-green-100" />
-                <Card 
-                  className="p-3 bg-white" 
-                  size="small"
-                >
-                  <div className="flex items-center">
-                    <Spin size="small" className="mr-2" />
-                    <span className="text-gray-500">正在思考...</span>
-                  </div>
-                </Card>
-              </div>
-            </div>
+                <Flex justify='center'>
+                  <Spin size="small" className="mr-2" />
+                  <span className="text-gray-500">正在思考...</span>
+                </Flex>
+              </Card>
+            </Flex>
           )}
           <div ref={messagesEndRef} />
-        </div>
-      </div>
-      <div className='flex content-wrapper'>
-        <Space.Compact className="w-full">
-          <TextArea 
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onPressEnter={handleKeyPress}
-            placeholder="请输入您的问题... (Enter 发送, Shift+Enter 换行)"
-            rows={3}
-            autoSize={{ minRows: 3, maxRows: 6 }}
-          />
-          <Button 
-            type="primary" 
-            icon={<SendOutlined />} 
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || loading}
-          >
-            发送
-          </Button>
-        </Space.Compact>
-      </div>
-    </div>
+        </Flex>
+      </Flex>
+      <Flex vertical={false} className='content-wrapper'>
+        <TextArea 
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onPressEnter={handleKeyPress}
+          placeholder="请输入您的问题... (Enter 发送, Shift+Enter 换行)"
+          autoSize={{ minRows: 2, maxRows: 3 }}
+        />
+        <Button 
+          type={"primary"}
+          icon={<SendOutlined />} 
+          size="large"
+          onClick={handleSendMessage}
+          disabled={!inputValue.trim() || loading}
+          style={{ height: 54 }} 
+        >
+          发送
+        </Button>
+      </Flex>
+    </Flex>
   )
 }
 

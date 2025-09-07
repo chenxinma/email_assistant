@@ -23,7 +23,6 @@
 - **Electron**：跨平台桌面应用框架
 - **React 19**：前端UI库
 - **Ant Design**：UI组件库
-- **Tailwind CSS**：样式框架
 - **Vite**：构建工具
 
 ## 安装

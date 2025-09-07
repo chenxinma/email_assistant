@@ -41,6 +41,7 @@ async def lifespan(_app: FastAPI):
     base_url = config_manager.config["ai"]["embeddingBaseUrl"]
     model_id = config_manager.config["ai"]["embeddingModel"]
     aiProcessor = AIProcessor(embedding_base_url=base_url,
+                              embedding_api_key=api_key,
                               embedding_model=model_id)
     emailPresistence = EmailPresistence(db_file=DB_FILE, 
                               embedding_base_url=base_url,

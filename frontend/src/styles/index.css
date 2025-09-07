@@ -1,8 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-/* 配置Tailwind自定义主题 */
+
+/* 配置Tailwind自定义主题
 @layer base {
   :root {
     --color-primary: #165DFF;
@@ -14,7 +12,7 @@
     --color-warning: #FAAD14;
     --color-danger: #FF4D4F;
   }
-}
+} */
 
 body {
   margin: 0;
@@ -65,5 +63,31 @@ code {
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #6b7280; /* gray-500 */
+  }
+
+  .h-full {
+    height: 100%;
+  }
+  .flex-row-reverse {
+    flex-direction: row-reverse;
+  }
+  .overflow-y-auto {
+    overflow-y: auto;
+  }
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
+  }
+
+  .bg-blue-100 {
+    background-color: #0B57D0 !important;
+  }
+  .bg-green-100 {
+    background-color: #09b846 !important;
+  }
+  .bg-blue-50 {
+    background-color: #f0f9ff !important;
+  }
+  .bg-white {
+    background-color: #fff;
   }
 }

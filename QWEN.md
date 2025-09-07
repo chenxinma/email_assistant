@@ -30,7 +30,6 @@
 ### 前端
 - **Electron + React**：构建跨平台桌面应用
 - **Ant Design**：企业级 UI 组件库
-- **Tailwind CSS**：现代化 CSS 框架
 - **Axios**：HTTP 客户端
 
 ### 后端
