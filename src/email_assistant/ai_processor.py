@@ -56,6 +56,28 @@ class AIProcessor:
             """)
         )
 
+        self.qa_agent = Agent(
+            qwen("qwen3-coder-flash"),  # 使用较小的模型以节省成本
+            output_type=str,
+            instructions=textwrap.dedent("""
+            你是一个专业的邮件问答助手。
+            你的任务是根据提供的邮件内容回答用户的问题。
+            - 输出的答案采用Markdown格式。
+            - 答案要简洁，不要超过300个字符。
+            - 最多只展示前3封邮件的内容摘要
+
+            回答格式：
+            {用户问题的总结回答}
+
+            共搜索到{搜索到的邮件数}封相关的邮件，分别是：
+            1. ** [subject1] **
+            {邮件内容摘要1}
+
+            2. ** [sunject2] **
+            {邮件内容摘要2}
+            """)
+        )
+
     def _make_mail_summary_prompt(self, whoami:str, summary: Optional[str], email_info_list: List[MailInfo])->str:
         prompt = MailSummaryPrompt(
             user=f"你是{whoami}",
@@ -279,3 +301,8 @@ class AIProcessor:
             results.append({k: row[k] for k in row.keys()})
 
         return results
+
+    def ask_question(self, question: str, mails: List[dict]):
+        """回答问题"""
+        prompt = f"问题: {question}\n搜索到的邮件共{len(mails)}封，分别是: {mails}\n答案:"
+        return self.qa_agent.run_stream(prompt)

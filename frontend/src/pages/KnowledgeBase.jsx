@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { apiService } from '../services/api'
+import ReactMarkdown from 'react-markdown'
 import { message, Input, Button, Card, Avatar, Space, Typography, Spin, Flex } from 'antd'
 import { SendOutlined, UserOutlined, MessageOutlined, RightCircleFilled } from '@ant-design/icons'
 
@@ -17,6 +18,7 @@ const ChatPage = () => {
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
+  const assistantMessageRef = useRef(null)
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -39,61 +41,50 @@ const ChatPage = () => {
     setMessages(prevMessages => [...prevMessages, userMessage])
     setInputValue('')
     setLoading(true)
-
-    try {
-      // 调用现有API进行搜索或问答
-      const response = await apiService.searchEmails({
-        query: inputValue,
-        folder: 'INBOX'
-      })
-      
-      const results = response.data.results || []
-      
-      // 生成助手回复
-      let assistantContent = ''
-      if (results.length > 0) {
-        assistantContent = `我找到了 ${results.length} 封相关邮件。以下是主要信息：\n`
-        
-        // 从搜索结果中提取信息生成回答
-        results.slice(0, 3).forEach((result, index) => {
-          const subject = result.subject || '无主题'
-          const sender = result.sender ? `来自 ${result.sender}` : ''
-          const date = result.date ? `于 ${result.date}` : ''
-          const snippet = result.content ? result.content.substring(0, 100) + '...' : '无内容'
-          
-          assistantContent += `\n${index + 1}. [${subject}] ${sender} ${date}\n   ${snippet}\n`
-        })
-        
-        if (results.length > 3) {
-          assistantContent += `\n还有 ${results.length - 3} 条结果未显示。您可以提供更具体的问题来获取更精准的信息。`
-        }
-      } else {
-        assistantContent = '抱歉，我没有找到相关的邮件信息。请尝试使用不同的关键词再次搜索。'
+    
+    // 创建助手消息对象并保存引用
+    const assistantMessage = {
+      role: 'assistant',
+      content: '', // 初始为空字符串
+      timestamp: new Date().toLocaleTimeString()
+    }
+    
+    // 保存助手消息的引用
+    assistantMessageRef.current = assistantMessage
+    
+    // 将助手消息添加到消息列表
+    setMessages(prevMessages => [...prevMessages, assistantMessage])
+    
+    // 调用现有API进行搜索或问答
+    await apiService.searchEmails({
+      query: inputValue,
+      folder: 'INBOX'
+    }, (data) => {
+      // 获取流式数据并更新消息内容
+      if (assistantMessageRef.current) {
+        // 直接更新当前消息内容
+        assistantMessageRef.current.content = data.content
+        // 触发重新渲染
+        setMessages(prevMessages => [...prevMessages])
       }
-      
-      // 添加助手回复到聊天记录
-      const assistantMessage = {
-        role: 'assistant',
-        content: assistantContent,
-        timestamp: new Date().toLocaleTimeString()
-      }
-      
-      setMessages(prevMessages => [...prevMessages, assistantMessage])
-    } catch (error) {
+    }, () => {
+      console.log(assistantMessage.content)
+      // 请求完成，清除loading状态和引用
+      setLoading(false)
+      assistantMessageRef.current = null
+    }, (error) => {
       message.error(`抱歉，我暂时无法为您提供帮助: ${error.message || '未知错误'}`)
       console.error('获取邮件信息失败:', error)
-      
-      // 添加错误消息到聊天记录
-      const errorMessage = {
-        role: 'assistant',
-        content: `抱歉，我暂时无法为您提供帮助。请稍后再试。`,
-        timestamp: new Date().toLocaleTimeString()
+
+      if (assistantMessageRef.current) {
+        assistantMessageRef.current.content = `抱歉，我暂时无法为您提供帮助。请稍后再试。`
+        assistantMessageRef.current.timestamp = new Date().toLocaleTimeString()
+        setMessages(prevMessages => [...prevMessages])
       }
       
-      setMessages(prevMessages => [...prevMessages, errorMessage])
-    } finally {
       setLoading(false)
-    }
+      assistantMessageRef.current = null
+    })
   }
 
   const handleKeyPress = (e) => {
@@ -122,27 +113,38 @@ const ChatPage = () => {
                     className={`${msg.role === 'user' ? 'bg-blue-100' : 'bg-green-100'}`}
                   />
                 </Flex>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <ReactMarkdown
+                    components={{
+                        code({node, inline, className, children, ...props}) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              style={materialLight}
+                              language={match[1]}
+                              PreTag="div"
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}>{msg.content}
+                </ReactMarkdown>
+                {loading && msg.content ==='' && (
+                    <Flex justify='center'>
+                      <Spin size="small" className="mr-2" />
+                      <span className="text-gray-500">正在生成回复...</span>
+                    </Flex>)}
                 <Text type="secondary" className="text-xs block mt-1">
                   {msg.timestamp}
                 </Text>
               </Card>
             </Flex>
           ))}
-          {loading && (
-            <Flex justify="flex-start" vertical={false}>
-              <Card 
-                className="p-3 bg-white" 
-                size="small"
-              >
-                <Avatar icon={<MessageOutlined />} className="mr-2 bg-green-100" />
-                <Flex justify='center'>
-                  <Spin size="small" className="mr-2" />
-                  <span className="text-gray-500">正在思考...</span>
-                </Flex>
-              </Card>
-            </Flex>
-          )}
           <div ref={messagesEndRef} />
         </Flex>
       </Flex>

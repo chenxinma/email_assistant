@@ -198,16 +198,21 @@ async def get_emails(folder: str = "", limit: int = 10, offset: int = 0):
 async def search_emails(query: SearchQuery, aiProcessor: AIProcessor = Depends(get_ai_processor_inject)):
     """语义搜索邮件"""
     conn = get_conn()
+    results = []
     try:
         results = await aiProcessor.search_similar_emails(query.query, conn=conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索邮件失败: {str(e)}")
     finally:
         conn.close()
-    return {
-        "query": query.query,
-        "results": results
-    }
+    
+    async def generate_stream():
+        async with aiProcessor.ask_question(query.query, results) as stream:
+            async for text in stream.stream(debounce_by=0.01):
+                yield b'data: ' + json.dumps({"content": text}).encode('utf-8') + b'\n'
+            else:
+                yield 'data: [DONE]\n\n'
+    return StreamingResponse(generate_stream(), media_type='text/event-stream')
 
 @app.get("/api/summary/daily")
 async def get_daily_summary(
