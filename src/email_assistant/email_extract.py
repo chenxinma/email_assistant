@@ -1,6 +1,4 @@
 import os
-import re
-import sqlite3
 import textwrap
 from typing import Generator, List
 
@@ -8,10 +6,9 @@ from dotenv import load_dotenv
 from icalendar import Calendar
 import langextract as lx
 from langextract.data import AnnotatedDocument
-from langextract.inference import BaseLanguageModel
-from openai import OpenAI
 
 from .type import Email, EmailAttribute
+from .extract_provider import QwenProvider
 
 examples = [
     lx.data.ExampleData(
@@ -78,31 +75,24 @@ examples = [
     ),
 ]
 
-class QwenDashScopeModel(BaseLanguageModel):
-    def __init__(self, model_id: str, **kwargs):
-        super().__init__()
-        load_dotenv()
-        self.model_id = model_id
-        self.client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY", ""),
-            base_url=os.getenv("OPENAI_BASE_URL", ""),
-        )
-    
-    def infer(self, batch_prompts, **kwargs):
-        # Implement inference
-        for prompt in batch_prompts:
-            result = self._call_api(prompt)
-            yield [lx.inference.ScoredOutput(score=1.0, output=result)]
-    
-    def _call_api(self, prompt: str):
-        response = self.client.chat.completions.create(
-            model=self.model_id,
-            messages=[{"role": "user", "content": prompt}, ]
-        )
-        return response.choices[0].message.content  # pyright: ignore[reportReturnType]
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY", "")
+base_url = os.getenv("OPENAI_BASE_URL", "")
 
+lx_prompt = "抽取邮件收件对象、日期时间、主要内容。主要内容要简短，概括到300字以内。"
+model_id = "qwen-plus"
 
-def extract_email_info(emails: List[Email], model_id:str) -> Generator[EmailAttribute, None, None]:
+config = lx.factory.ModelConfig(
+    model_id=model_id,
+    provider="QwenProvider",
+    provider_kwargs={
+        "api_key": api_key,
+        "base_url": base_url,
+    },
+)
+model = lx.factory.create_model(config)
+
+def extract_email_info(emails: List[Email]) -> Generator[EmailAttribute, None, None]:
     """抽取读取邮件，邮件收件对象、关注的日期时间、主要内容"""
     # 过滤出包含icalendar的邮件
     cal_emails = []
@@ -130,40 +120,41 @@ def extract_email_info(emails: List[Email], model_id:str) -> Generator[EmailAttr
                 )
                 yield row
 
-    docs = [
-        lx.data.Document(
-            text=f"""
-                subject:{email.subject}
-                sender:{email.sender}
-                content:{email.content}
-            """.strip()[:1000],
-            document_id=str(email.uid),
-        )
-        for email in any_emails
-    ]
-    lx_prompt = "抽取邮件收件对象、日期时间、主要内容。主要内容要简短，概括到300字以内。"
- 
-    result = lx.extract(
-        text_or_documents=docs,
-        prompt_description=lx_prompt,
-        examples=examples,
-        language_model_type=QwenDashScopeModel,
-        model_id=model_id
-    )
-    if isinstance(result, AnnotatedDocument):
-        result = [result]
-
-    for doc in result:
-        if doc.extractions:
-            row = EmailAttribute(
-                uid= int(doc.document_id),
+    if len(any_emails) > 0:
+        docs = [
+            lx.data.Document(
+                text=f"""
+                    subject:{email.subject}
+                    sender:{email.sender}
+                    content:{email.content}
+                """.strip()[:1000],
+                document_id=str(email.uid),
             )
-            for e in doc.extractions:
-                if e.extraction_class == "收件对象":
-                    row.recipient = e.extraction_text
-                elif e.extraction_class == "关注的日期时间":
-                    row.datetime = e.extraction_text
-                elif e.extraction_class == "主要内容":
-                    row.content = e.extraction_text
-            yield row
+            for email in any_emails
+        ]
+        
+        result = lx.extract(
+            text_or_documents=docs,
+            prompt_description=lx_prompt,
+            examples=examples,
+            model = model,
+            use_schema_constraints=True,
+            debug=False,
+        )
+        if isinstance(result, AnnotatedDocument):
+            result = [result]
+
+        for doc in result:
+            if doc.extractions:
+                row = EmailAttribute(
+                    uid= int(doc.document_id),
+                )
+                for e in doc.extractions:
+                    if e.extraction_class == "收件对象":
+                        row.recipient = e.extraction_text
+                    elif e.extraction_class == "关注的日期时间":
+                        row.datetime = e.extraction_text
+                    elif e.extraction_class == "主要内容":
+                        row.content = e.extraction_text
+                yield row
 

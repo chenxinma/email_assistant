@@ -241,10 +241,11 @@ class AIProcessor:
                     emails.subject,
                     emails.sender,
                     emails.date,
-                    emails.content,
+                    email_attributes.content,
                     vec.distance
                 FROM
                     emails
+                INNER JOIN email_attributes ON emails.uid = email_attributes.uid
                 INNER JOIN (
                     SELECT 
                         uid,
@@ -273,10 +274,11 @@ class AIProcessor:
                     emails.subject,
                     emails.sender,
                     emails.date,
-                    emails.content,
+                    email_attributes.content,
                     vec.distance
                 FROM
                     emails
+                INNER JOIN email_attributes ON emails.uid = email_attributes.uid
                 INNER JOIN (
                     SELECT 
                         uid,

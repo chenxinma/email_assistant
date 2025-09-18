@@ -99,8 +99,6 @@ async def get_config(config: Dict[str, Any] = Depends(get_config_inject)):
     """获取配置"""
     return config
 
-
-
 @app.post("/api/emails/refresh")
 async def refresh_emails(days: int = 2, \
                          config: Dict[str, Any] = Depends(get_config_inject),
@@ -133,7 +131,7 @@ async def refresh_emails(days: int = 2, \
             
             n_cnt = 0
             e_cnt = 0
-            attributes = extract_email_info(emailPresistence.get_noattribute_emails(), 'qwen3-coder-plus')
+            attributes = extract_email_info(emailPresistence.get_noattribute_emails())
             for attr in attributes:
                 if emailPresistence.save_email_attributes_to_db(attr):
                     n_cnt += 1

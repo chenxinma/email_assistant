@@ -39,7 +39,8 @@ class ConfigManager:
                      "embeddingApiKey": "empty password",
                     "summaryLength": 512,
                     "whoami": "我是谁？"
-                }
+                },
+                "otel_endpoint": "http://localhost:4318",
             }
             self.save_config(config)
             return config
