@@ -4,7 +4,8 @@ set Path=C:\Users\Administrator\.local\bin;%Path%
 
 REM 启动后端服务
 echo 启动后端服务...
-start "后端服务" /D "%~dp0" uv run email-assistant
+REM start "后端服务" /D "%~dp0" uv run email-assistant
+start "后端服务" /D "%~dp0" uv run email-assistant --api
 
 REM 等待后端服务启动
 timeout /t 3 /nobreak >nul

@@ -54,7 +54,7 @@ class EmailAttribute(BaseModel):
     content: str
 
 agent = Agent(
-            qwen("qwen-plus"), 
+            qwen("qwen3-max-preview"), 
             deps_type=Deps,
             instructions=textwrap.dedent("""
             Be fun!
