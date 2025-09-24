@@ -6,7 +6,7 @@ import json
 import os
 import sqlite3
 import textwrap
-from typing import Any, List, Optional
+from typing import Any, List
 
 from ag_ui.core import RunAgentInput
 from fastapi import Depends, FastAPI, HTTPException
@@ -19,10 +19,12 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.ag_ui import SSE_CONTENT_TYPE, run_ag_ui
 import sqlite_vec
 
-from .email_extract import extract_email_info
-from .email_processor import EmailClient, EmailPresistence
+from .react.prompt import set_run_agent_input
+
 from .ai_processor import AIProcessor
 from .config import ConfigManager
+from .email_extract import extract_email_info
+from .email_processor import EmailClient, EmailPresistence
 from .models import qwen
 
 # 配置文件路径
@@ -40,6 +42,9 @@ if otel_endpoint:
     logfire.configure(send_to_logfire=False, console=False, service_name="cli-agent")  
     logfire.instrument_pydantic_ai()
     logfire.instrument_httpx(capture_all=True)
+else:
+    logfire.configure(send_to_logfire=False)  
+    logfire.instrument_pydantic_ai(event_mode="logs")  
 
 @dataclass
 class Deps:
@@ -56,37 +61,7 @@ class EmailAttribute(BaseModel):
 agent = Agent(
             qwen("qwen3-max-preview"), 
             deps_type=Deps,
-            instructions=textwrap.dedent("""
-            Be fun!
-            你是一个专业的邮件问答助手。
-            你的任务是根据提供的邮件内容回答用户的问题。
-            - 答案采用Markdown格式，分段，调理清晰。
-            - 当用户询问当前日期时，使用current_date工具获取当前日期。
-            - 当用户问询问题时，邮件内容，使用search_emails工具回答用户。答案要简洁，不要超过500个字符。查询时，最多只展示前3封邮件的内容摘要。
-            - 当用户指定日期的邮件总结时，使用summarize_daily_emails工具。根据提供的邮件内容生成简洁、准确的摘要，突出关键信息和待办事项。摘要输出文字数要小于800。把与你<User/>相关的内如放到前面，把与你<User/>无关的内如放到后面。
-            
-            ### 问询问题回答格式：
-            {用户问题的总结回答}
-
-            共搜索到{搜索到的邮件数}封相关的邮件，分别是：
-            1. [subject1] 
-                {邮件内容摘要1}
-
-            2. [sunject2] 
-                {邮件内容摘要2}
-
-            ### 邮件总结示例：
-            > 今日邮件摘要（2025年7月17日）
-
-            ## 与我相关
-
-            ** 工单处理 ** ：需处理工单 xxxxxx。
-            **运维平台命名**：确认平台名称为 SyncoOps，已通知相关人员。
-
-            ## 其他事项
-
-            收到反垃圾邮件系统通知。
-            """)
+            instructions=textwrap.dedent("Be fun!")
         )
 
 def get_conn():
@@ -211,41 +186,43 @@ async def refresh_emails(days: int = 2, \
     async def generate_stream():
         email_client = EmailClient(host, port, username, password)
         if email_client.connect():
-            emailPresistence.connect()
-            last_uid = emailPresistence.get_last_uid()
-            print(f"最后一个UID: {last_uid}")
-            emails = email_client.fetch_emails(days=days, last_uid=last_uid)
-            n_cnt = 0
-            e_cnt = 0
-            async for email in emails:
-                result = await emailPresistence.save_emails_to_db(email)
-                if result:
-                    n_cnt += 1
-                    yield f'data: {json.dumps({"message": "邮件处理中", "count": n_cnt, "title": email.subject})}\n\n'
-                else:
-                    e_cnt += 1
-                    yield f'data: {json.dumps({"message": "邮件处理失败", "count": n_cnt, "title": email.subject})}\n\n'
-                print(f"处理完成，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {email.uid}", end="\r")
-                emailPresistence.commit()
-            
-            n_cnt = 0
-            e_cnt = 0
-            attributes = extract_email_info(emailPresistence.get_noattribute_emails())
-            for attr in attributes:
-                if emailPresistence.save_email_attributes_to_db(attr):
-                    n_cnt += 1
-                    yield f'data: {json.dumps({"message": "邮件属性保存中", "count": n_cnt, "title": attr.content[:20]})}\n\n'
-                else:
-                    e_cnt += 1
-                    yield f'data: {json.dumps({"message": "邮件属性保存失败", "count": n_cnt, "title": attr.content[:20]})}\n\n'
-                print(f"邮件属性提取，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {attr.uid}", end="\r")
-                emailPresistence.commit()
-            emailPresistence.close()
-            yield f'data: {json.dumps({"message": "邮件刷新成功", "count": n_cnt})}\n\n'
-        else:
-            yield f'data: {json.dumps({"message": "连接邮件服务器失败"})}\n\n'
-            emailPresistence.close()
-        yield 'data: [DONE]\n\n'
+            for folder in config["mail"]["indexedFolders"]:
+                emailPresistence.connect()
+                yield f'data: {json.dumps({"message": f"文件夹处理中 {folder}"})}\n\n'
+                last_uid = emailPresistence.get_last_uid(folder)
+                logfire.info(f"最后一个UID: {last_uid}")
+                emails = email_client.fetch_emails(folder=folder, days=days, last_uid=last_uid)
+                n_cnt = 0
+                e_cnt = 0
+                async for email in emails:
+                    result = await emailPresistence.save_emails_to_db(email)
+                    if result:
+                        n_cnt += 1
+                        yield f'data: {json.dumps({"message": "邮件处理中", "count": n_cnt, "title": email.subject})}\n\n'
+                    else:
+                        e_cnt += 1
+                        yield f'data: {json.dumps({"message": "邮件处理失败", "count": n_cnt, "title": email.subject})}\n\n'
+                    logfire.info(f"处理完成，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {email.uid}")
+                    emailPresistence.commit()
+                
+                n_cnt = 0
+                e_cnt = 0
+                attributes = extract_email_info(emailPresistence.get_noattribute_emails())
+                for attr in attributes:
+                    if emailPresistence.save_email_attributes_to_db(attr):
+                        n_cnt += 1
+                        yield f'data: {json.dumps({"message": "邮件属性保存中", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                    else:
+                        e_cnt += 1
+                        yield f'data: {json.dumps({"message": "邮件属性保存失败", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                    logfire.info(f"邮件属性提取，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {attr.uid}")
+                    emailPresistence.commit()
+                emailPresistence.close()
+                yield f'data: {json.dumps({"message": "邮件刷新成功", "count": n_cnt})}\n\n'
+            else:
+                yield f'data: {json.dumps({"message": "连接邮件服务器失败"})}\n\n'
+                emailPresistence.close()
+            yield 'data: [DONE]\n\n'
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
@@ -256,17 +233,21 @@ async def run_agent(request: Request,
     accept = request.headers.get('accept', SSE_CONTENT_TYPE)
     try:
         run_input = RunAgentInput.model_validate(await request.json())
+        set_run_agent_input(run_input)
     except ValidationError as e:  # pragma: no cover
         return Response(
             content=json.dumps(e.json()),
             media_type='application/json',
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
-
-    event_stream = run_ag_ui(agent, run_input, accept=accept, deps=Deps(
-        aiProcessor=aiProcessor, 
-        whoami=config["ai"]["whoami"],
-        conn=get_conn()))
+    
+    event_stream = run_ag_ui(agent, 
+        run_input, 
+        accept=accept, 
+        deps=Deps(
+            aiProcessor=aiProcessor, 
+            whoami=config["ai"]["whoami"],
+            conn=get_conn()))
 
     return StreamingResponse(event_stream, media_type=accept)
 

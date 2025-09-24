@@ -10,7 +10,7 @@ def setup_logging(name:str):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    log_file = os.path.join(log_dir, f'ad-agent_{datetime.now().strftime("%Y%m%d")}.log')
+    log_file = os.path.join(log_dir, f'assistant_{datetime.now().strftime("%Y%m%d")}.log')
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,

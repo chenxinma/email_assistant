@@ -1,5 +1,6 @@
+import os
 import unittest
-from email.header import decode_header
+from src.email_assistant.config import ConfigManager
 from src.email_assistant.email_processor import EmailClient
 
 
@@ -29,3 +30,22 @@ class TestEmailProcessor(unittest.TestCase):
         encoded_header = '=?UTF-8?Q?=E6=9D=8E=E5=9B=9B?= <li.si@example.com>'
         decoded = self.processor.header_decode(encoded_header)
         self.assertEqual(decoded, '李四 <li.si@example.com>')
+
+    def test_list_folders(self):
+        # 配置文件路径
+        CONFIG_FILE = os.environ.get("CONFIG_FILE", "data/config.json")
+        config_manager = ConfigManager(CONFIG_FILE)
+        config_manager.load_config()
+        config = config_manager.config
+        host = config["mail"]["imapServer"]
+        port = config["mail"]["imapPort"]
+        username = config["mail"]["emailAddress"]
+        password = config["mail"]["emailPassword"]
+
+        email_client = EmailClient(host, port, username, password)
+        email_client.connect()
+
+        # 获取文件夹列表
+        folders = email_client.list_folders() 
+        self.assertIsInstance(folders, list)
+        print("folders:", folders)

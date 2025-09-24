@@ -54,6 +54,17 @@ class EmailClient:
     def __del__(self):
         """析构函数，确保连接断开"""
         self.disconnect()
+
+    def list_folders(self) -> List[str]:
+        """获取所有文件夹"""
+        if self.client:
+            try:
+                status, folders = self.client.list()
+                if status == 'OK':
+                    return [folder.decode().split(' "/" ')[-1] for folder in folders]  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            except Exception as e:
+                print(f"获取文件夹列表失败: {str(e)}")
+        return []
     
     def header_decode(self, encoded_header:str):
         if "=?" in encoded_header:
