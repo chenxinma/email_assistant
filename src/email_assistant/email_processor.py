@@ -12,6 +12,7 @@ import textwrap
 from typing import AsyncGenerator, Awaitable, Callable, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
+import logfire
 from openai import AsyncOpenAI
 from sqlite_vec import serialize_float32
 import sqlite_vec
@@ -35,7 +36,7 @@ class EmailClient:
             self.client.login(self.username, self.password)
             return True
         except Exception as e:
-            print(f"连接邮件服务器失败: {str(e)}")
+            logfire.error("连接邮件服务器失败: {error=}", error=str(e))
             return False
     
     def disconnect(self):
@@ -46,7 +47,7 @@ class EmailClient:
                 self.client.logout()
             except Exception as e:
                 # 记录异常但不抛出，避免析构函数中出现错误
-                print(f"断开邮件服务器连接时发生错误: {str(e)}")
+                logfire.error("断开邮件服务器连接时发生错误: {error=}", error=str(e))
             finally:
                 # 确保将client设置为None，避免后续使用
                 self.client = None
@@ -63,7 +64,7 @@ class EmailClient:
                 if status == 'OK':
                     return [folder.decode().split(' "/" ')[-1] for folder in folders]  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
             except Exception as e:
-                print(f"获取文件夹列表失败: {str(e)}")
+                logfire.error("获取文件夹列表失败: {error=}", error=str(e))
         return []
     
     def header_decode(self, encoded_header:str):
@@ -207,7 +208,7 @@ class EmailClient:
                 
                 yield email_obj
             except Exception as e:
-                print(f"解析邮件失败 (ID: {email_id.decode()}): {str(e)}")
+                logfire.error("解析邮件失败 (ID: {email_id=}): {error=}", email_id=email_id.decode(), error=str(e))
                 continue
 
 class EmailPresistence:
@@ -262,7 +263,7 @@ class EmailPresistence:
             else:
                 return 0
         except Exception as e:
-            print(f"获取最后一个UID失败: {str(e)}")
+            logfire.error("获取最后一个UID失败, folder: {folder=}, {error=}", folder=folder, error=str(e))
             return 0
 
     async def save_emails_to_db(self, email_obj: Email):
@@ -319,7 +320,7 @@ class EmailPresistence:
             
             return True
         except Exception as e:
-            print(f"保存邮件到数据库失败: {str(e)}")
+            logfire.error("保存邮件到数据库失败, uid: {uid=}, {error=}", uid=email_obj.uid, error=str(e))
             return False
 
     def save_email_attributes_to_db(self, email_attr: EmailAttribute) -> bool:
@@ -345,7 +346,7 @@ class EmailPresistence:
             ))
             return True
         except Exception as e:
-            print(f"保存邮件属性到数据库失败: {str(e)}")
+            logfire.error("保存邮件属性到数据库失败, uid: {uid=}, {error=}", uid=email_attr.uid, error=str(e))
             return False
     
     def get_email_by_uid(self, uid) -> Optional[Email]:

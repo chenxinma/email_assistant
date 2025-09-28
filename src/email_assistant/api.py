@@ -39,7 +39,7 @@ config_manager.load_config()
 otel_endpoint = config_manager.get("otel_endpoint", None)
 if otel_endpoint:
     os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://localhost:4318'  
-    logfire.configure(send_to_logfire=False, console=False, service_name="cli-agent")  
+    logfire.configure(send_to_logfire=False, console=False, service_name="email-assistant")  
     logfire.instrument_pydantic_ai()
     logfire.instrument_httpx(capture_all=True)
 else:
@@ -184,45 +184,48 @@ async def refresh_emails(days: int = 2, \
     password = config["mail"]["emailPassword"]
  
     async def generate_stream():
-        email_client = EmailClient(host, port, username, password)
-        if email_client.connect():
-            for folder in config["mail"]["indexedFolders"]:
-                emailPresistence.connect()
-                yield f'data: {json.dumps({"message": f"文件夹处理中 {folder}"})}\n\n'
-                last_uid = emailPresistence.get_last_uid(folder)
-                logfire.info(f"最后一个UID: {last_uid}")
-                emails = email_client.fetch_emails(folder=folder, days=days, last_uid=last_uid)
-                n_cnt = 0
-                e_cnt = 0
-                async for email in emails:
-                    result = await emailPresistence.save_emails_to_db(email)
-                    if result:
-                        n_cnt += 1
-                        yield f'data: {json.dumps({"message": "邮件处理中", "count": n_cnt, "title": email.subject})}\n\n'
-                    else:
-                        e_cnt += 1
-                        yield f'data: {json.dumps({"message": "邮件处理失败", "count": n_cnt, "title": email.subject})}\n\n'
-                    logfire.info(f"处理完成，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {email.uid}")
-                    emailPresistence.commit()
-                
-                n_cnt = 0
-                e_cnt = 0
-                attributes = extract_email_info(emailPresistence.get_noattribute_emails())
-                for attr in attributes:
-                    if emailPresistence.save_email_attributes_to_db(attr):
-                        n_cnt += 1
-                        yield f'data: {json.dumps({"message": "邮件属性保存中", "count": n_cnt, "title": attr.content[:20]})}\n\n'
-                    else:
-                        e_cnt += 1
-                        yield f'data: {json.dumps({"message": "邮件属性保存失败", "count": n_cnt, "title": attr.content[:20]})}\n\n'
-                    logfire.info(f"邮件属性提取，共 {n_cnt} 条邮件，{e_cnt} 条异常，当前UID: {attr.uid}")
-                    emailPresistence.commit()
-                emailPresistence.close()
-                yield f'data: {json.dumps({"message": "邮件刷新成功", "count": n_cnt})}\n\n'
-            else:
-                yield f'data: {json.dumps({"message": "连接邮件服务器失败"})}\n\n'
-                emailPresistence.close()
-            yield 'data: [DONE]\n\n'
+        with logfire.span('refresh emails'):
+            email_client = EmailClient(host, port, username, password)
+            if email_client.connect():
+                for folder in config["mail"]["indexedFolders"]:
+                    emailPresistence.connect()
+                    yield f'data: {json.dumps({"message": f"文件夹处理中 {folder}"})}\n\n'
+                    last_uid = emailPresistence.get_last_uid(folder)
+                    logfire.info("最后一个UID: {uid=}", uid=last_uid)
+                    emails = email_client.fetch_emails(folder=folder, days=days, last_uid=last_uid)
+                    n_cnt = 0
+                    e_cnt = 0
+                    async for email in emails:
+                        result = await emailPresistence.save_emails_to_db(email)
+                        if result:
+                            n_cnt += 1
+                            yield f'data: {json.dumps({"message": "邮件处理中", "count": n_cnt, "title": email.subject})}\n\n'
+                        else:
+                            e_cnt += 1
+                            yield f'data: {json.dumps({"message": "邮件处理失败", "count": n_cnt, "title": email.subject})}\n\n'
+                        logfire.info("处理完成，共 {n_cnt=} 条邮件，{e_cnt=} 条异常，当前UID: {uid=}", 
+                                     n_cnt=n_cnt, e_cnt=e_cnt, uid=email.uid)
+                        emailPresistence.commit()
+                    
+                    n_cnt = 0
+                    e_cnt = 0
+                    attributes = extract_email_info(emailPresistence.get_noattribute_emails())
+                    for attr in attributes:
+                        if emailPresistence.save_email_attributes_to_db(attr):
+                            n_cnt += 1
+                            yield f'data: {json.dumps({"message": "邮件属性保存中", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                        else:
+                            e_cnt += 1
+                            yield f'data: {json.dumps({"message": "邮件属性保存失败", "count": n_cnt, "title": attr.content[:20]})}\n\n'
+                        logfire.info("邮件属性提取，共 {n_cnt=} 条邮件，{e_cnt=} 条异常，当前UID: {uid=}", 
+                                      n_cnt=n_cnt, e_cnt=e_cnt, uid=attr.uid)
+                        emailPresistence.commit()
+                    emailPresistence.close()
+                    yield f'data: {json.dumps({"message": "邮件刷新成功", "count": n_cnt})}\n\n'
+                else:
+                    yield f'data: {json.dumps({"message": "连接邮件服务器失败"})}\n\n'
+                    emailPresistence.close()
+                yield 'data: [DONE]\n\n'
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream")
 

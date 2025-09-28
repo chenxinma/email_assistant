@@ -2,6 +2,8 @@
 REM 启动脚本 - 同时启动前端和后端服务
 set Path=C:\Users\Administrator\.local\bin;%Path%
 
+start "OTEL" "D:\Work\Go\otel-desktop-viewer\otel-desktop-viewer" --browser-port 8999
+
 REM 启动后端服务
 echo 启动后端服务...
 REM start "后端服务" /D "%~dp0" uv run email-assistant
