@@ -19,13 +19,12 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.ag_ui import SSE_CONTENT_TYPE, run_ag_ui
 import sqlite_vec
 
-from .react.prompt import set_run_agent_input
-
 from .ai_processor import AIProcessor
 from .config import ConfigManager
 from .email_extract import extract_email_info
 from .email_processor import EmailClient, EmailPresistence
 from .models import qwen
+from .react.prompt import set_run_agent_input
 
 # 配置文件路径
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "data/config.json")
@@ -59,7 +58,7 @@ class EmailAttribute(BaseModel):
     content: str
 
 agent = Agent(
-            qwen("qwen3-max-preview"), 
+            qwen("qwen3-max"), 
             deps_type=Deps,
             instructions=textwrap.dedent("Be fun!")
         )

@@ -8,7 +8,6 @@ import langextract as lx
 from langextract.data import AnnotatedDocument
 
 from .type import Email, EmailAttribute
-from .extract_provider import QwenProvider
 
 examples = [
     lx.data.ExampleData(
@@ -81,13 +80,12 @@ base_url = os.getenv("OPENAI_BASE_URL", "")
 
 lx_prompt = "抽取邮件收件对象、日期时间、主要内容。主要内容要简短，概括到300字以内。"
 model_id = "qwen-plus"
-
 config = lx.factory.ModelConfig(
     model_id=model_id,
-    provider="QwenProvider",
+    provider="OpenAILanguageModel",
     provider_kwargs={
         "api_key": api_key,
-        "base_url": base_url,
+        "base_url": base_url
     },
 )
 model = lx.factory.create_model(config)
@@ -138,8 +136,11 @@ def extract_email_info(emails: List[Email]) -> Generator[EmailAttribute, None, N
             prompt_description=lx_prompt,
             examples=examples,
             model = model,
+            max_workers=1,            # Parallel processing for speed
+            max_char_buffer=512,      # Smaller contexts for better accuracy
             use_schema_constraints=True,
             debug=False,
+            prompt_validation_level=lx.prompt_validation.PromptValidationLevel.OFF
         )
         if isinstance(result, AnnotatedDocument):
             result = [result]

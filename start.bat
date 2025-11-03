@@ -10,4 +10,6 @@ REM start "后端服务" /D "%~dp0" uv run email-assistant
 start "后端服务" /D "%~dp0" uv run email-assistant --api
 
 REM 等待后端服务启动
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
+
+start "private-assistant" /D "D:\Tools\private-assistant" private-assistant.exe
