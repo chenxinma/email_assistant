@@ -9,6 +9,7 @@ from typing import List, Optional, Union
 
 import cachetools
 import jieba
+import logfire
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
 from sqlite_vec import serialize_float32
@@ -37,27 +38,25 @@ class AIProcessorNoDataException(AIProcessorException):
 class AIProcessor:
     """AI处理类"""
     
-    def __init__(self, embedding_base_url:str, embedding_api_key: str="empty", embedding_model: str = "bge-large-zh-v1.5"):
+    def __init__(self, embedding_base_url:str, 
+                       embedding_api_key: str="empty", 
+                       embedding_model: str = "bge-large-zh-v1.5",
+                       summary_model: str = "qwen-flash",
+                       qa_model:str = "qwen-plus"):
         # 初始化模型
         self.embedding_model = AsyncOpenAI(
                         api_key=embedding_api_key,
                         base_url=embedding_base_url)
         self.embedding_model_id = embedding_model
-        # 初始化摘要生成agent
+
         self.summary_agent = Agent(
-            qwen("qwen3-coder-flash"),  # 使用较小的模型以节省成本
-            output_type=str,
-            instructions=textwrap.dedent("""
-            你是一个专业的邮件摘要生成器。
-            你的任务是根据提供的邮件内容生成简洁、准确的摘要，突出关键信息和待办事项。
-            
-            - 输出的摘要文本采用Markdown格式。
-            - 把与你<User/>相关的内如放到前面，把与你<User/>无关的内如放到后面。
-            """)
+            qwen(summary_model),
+            instructions="你是一个专业的邮件摘要整理专家。按邮件概括信息，需要包含 主题、关系信息、相关人员、代办事项。字数控制在1000字以内。"
+
         )
 
         self.qa_agent = Agent(
-            qwen("qwen3-coder-flash"),  # 使用较小的模型以节省成本
+            qwen(qa_model),  # 使用较小的模型以节省成本
             output_type=str,
             instructions=textwrap.dedent("""
             你是一个专业的邮件问答助手。
@@ -143,42 +142,55 @@ class AIProcessor:
         char_count = 0
         email_info_list = []
         summary = None
-        
-        # 逐条处理邮件内容，控制每次传递给agent的内容小于2000字符
-        for row in rows:
-            recipient = row['recipient'] or ''
-            content = row['content'] or ''
-            attention_datetime = row['datetime'] or ''
-            
-            # 构造邮件信息
-            email_info = MailInfo(
-                recipient=recipient,
-                attention_datetime=attention_datetime,
-                content=content
-            )
-            mail_info_length = len(email_info.to_xml(encoding='UTF-8').decode('utf-8')) # pyright: ignore[reportAttributeAccessIssue]
 
-            # 如果当前摘要加上新邮件信息超过2000字符，或者这是第一条邮件，则生成摘要
-            if char_count + mail_info_length > 2000:
-                # 调用agent生成摘要
-                prompt = self._make_mail_summary_prompt(whoami, summary, email_info_list)
-                result = await self.summary_agent.run(prompt)
+        with logfire.span("开始生成的摘要，共{c}封邮件", c=count):
+            # 逐条处理邮件内容，控制每次传递给agent的内容小于2000字符
+            for i, row in enumerate(rows):
+                recipient = row['recipient'] or ''
+                content = row['content'] or ''
+                attention_datetime = str(row['datetime']) or ''
+                
+                # 构造邮件信息
+                email_info = MailInfo(
+                    recipient=recipient,
+                    attention_datetime=attention_datetime,
+                    content=content
+                )
+                mail_info_length = len(email_info.to_xml(encoding='UTF-8').decode('utf-8')) # pyright: ignore[reportAttributeAccessIssue]
 
-                summary = result.output
-                char_count = result.usage().response_tokens or 0
+                # 如果当前摘要加上新邮件信息超过4000字符，或者这是第一条邮件，则生成摘要
+                if char_count + mail_info_length > 4000:
+                    # 调用agent生成摘要
+                    prompt = self._make_mail_summary_prompt(whoami, summary, email_info_list)
+                    result = await self.summary_agent.run(prompt)
 
-                email_info_list.clear()
+                    summary = result.output
+                    char_count = result.usage().output_tokens or 0
 
-            email_info_list.append(email_info)
-            char_count += mail_info_length
+                    email_info_list.clear()
+                    logfire.info("处理第{i}封邮件", i=i)
+
+                email_info_list.append(email_info)
+                char_count += mail_info_length
             
         # 处理最后一批邮件内容
         if len(email_info_list) > 0:
+            logfire.info("处理最后一批邮件内容")
+
             prompt = self._make_mail_summary_prompt(whoami, summary, email_info_list)
             result = await self.summary_agent.run(prompt)
-            summary_cache[key] = result.output
+            summary_mails = textwrap.dedent(f"""
+            摘录的邮件内容：
+            {result.output}
 
-            return result.output
+            你是{whoami}
+            - 输出的摘要文本采用Markdown格式。
+            - 把与你相关的内如放到前面，把与你无关的内如放到后面。
+            """)
+            logfire.info("summary: {s}", s=summary_mails[:500])
+            summary_cache[key] = summary_mails
+
+            return summary_mails
         else:
             raise AIProcessorException(f"{date.strftime('%Y-%m-%d')} 的邮件摘要生成失败")
 

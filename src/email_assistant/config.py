@@ -36,9 +36,11 @@ class ConfigManager:
                 "ai": {
                     "embeddingModel": "bge-large-zh-v1.5",
                     "embeddingBaseUrl": "http://172.16.37.21:9997/v1",
-                     "embeddingApiKey": "empty password",
+                    "embeddingApiKey": "empty password",
                     "summaryLength": 512,
-                    "whoami": "我是谁？"
+                    "whoami": "我是谁？",
+                    "summaryModel": "qwen-plus",
+                    "qaModel": "qwen-plus",
                 },
                 "otel_endpoint": "http://localhost:4318",
             }

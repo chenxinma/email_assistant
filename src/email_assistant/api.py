@@ -19,7 +19,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.ag_ui import SSE_CONTENT_TYPE, run_ag_ui
 import sqlite_vec
 
-from .ai_processor import AIProcessor
+from .ai_processor import AIProcessor, AIProcessorNoDataException
 from .config import ConfigManager
 from .email_extract import extract_email_info
 from .email_processor import EmailClient, EmailPresistence
@@ -58,7 +58,7 @@ class EmailAttribute(BaseModel):
     content: str
 
 agent = Agent(
-            qwen("qwen3-max"), 
+            qwen("qwen3-coder-plus"), 
             deps_type=Deps,
             instructions=textwrap.dedent("Be fun!")
         )
@@ -117,7 +117,24 @@ async def summarize_daily_emails(context: RunContext[Deps], date:str) -> str:
     
     target_date = datetime.strptime(date, '%Y-%m-%d').date()
     whoami= context.deps.whoami
-    return await context.deps.aiProcessor.generate_summary(target_date, whoami, context.deps.conn)
+    try:
+        with logfire.span('summarize_daily_emails, date={d}', d=date):
+            return await context.deps.aiProcessor.generate_summary(target_date, whoami, context.deps.conn)
+    except AIProcessorNoDataException as e:
+        return f"{date}没有邮件"
+
+@agent.tool
+async def summarize_today_emails(context: RunContext[Deps]) -> str:
+    """
+    对今天的邮件进行总结
+    
+    Returns:
+        str: 总结
+    """
+    
+    target_date = datetime.now().date()
+    return await summarize_daily_emails(context, target_date.strftime('%Y-%m-%d'))
+
 
 # 应用生命周期管理
 @asynccontextmanager
@@ -129,10 +146,14 @@ async def lifespan(_app: FastAPI):
     api_key = config_manager.config["ai"]["embeddingApiKey"]
     base_url = config_manager.config["ai"]["embeddingBaseUrl"]
     model_id = config_manager.config["ai"]["embeddingModel"]
+    summary_model = config_manager.config["ai"]["summaryModel"]
+    qa_model = config_manager.config["ai"]["qaModel"]
 
     aiProcessor = AIProcessor(embedding_base_url=base_url,
                               embedding_api_key=api_key,
-                              embedding_model=model_id)
+                              embedding_model=model_id,
+                              summary_model=summary_model,
+                              qa_model=qa_model)
     emailPresistence = EmailPresistence(db_file=DB_FILE, 
                               embedding_base_url=base_url,
                               embedding_api_key=api_key,
