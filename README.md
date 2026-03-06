@@ -6,9 +6,9 @@
 
 - 智能邮件摘要生成：自动生成每日邮件摘要和待办事项清单
 - 邮件知识库系统：将邮件内容向量化存储，支持语义搜索
-- 智能邮件发送：支持模板和关键词替换的邮件发送功能
-- 邮件模板管理：预设多种邮件模板，提高工作效率
-- 自然语言查询邮件：通过自然语言查询历史邮件内容
+- 邮件智能检索：通过自然语言查询历史邮件内容
+- 邮件同步功能：支持增量邮件同步与属性提取
+- 智能问答助手：提供基于邮件内容的AI问答服务
 
 ## 技术架构
 
@@ -44,19 +44,9 @@
 ## 使用说明
 
 ### 启动开发环境
-1. 启动后端服务: `uv run email-assistant`
-2. 启动前端开发服务器: `cd frontend && npm run dev`
-3. 启动Electron应用: `cd frontend && npm run electron:serve`
-
-在Windows上，你可以使用启动脚本同时启动前后端服务：
-```bash
-start-dev.bat
-```
-
-在Unix/Linux/MacOS上，使用：
-```bash
-./start-dev.sh
-```
+1. 初始化数据库: `uv run email-assistant --init`
+2. 启动API服务: `uv run email-assistant --api` (在端口9000运行API)
+3. 或者直接启动完整的桌面应用: `uv run email-assistant`
 
 ### 构建应用
 1. 构建前端: `cd frontend && npm run build`
@@ -65,8 +55,8 @@ start-dev.bat
 ### 使用应用
 1. 配置邮箱账户信息
 2. 启动应用后，应用会自动获取邮件并生成摘要
-3. 可以使用知识库功能查询历史邮件
-4. 使用模板功能快速发送邮件
+3. 邮件刷新: `/api/emails/refresh` 支持流式响应返回邮件处理进度
+4. AI功能: `/` 端点提供智能邮件搜索、摘要生成等交互
 
 ## 配置说明
 
@@ -97,12 +87,9 @@ start-dev.bat
 
 | 端点 | 方法 | 功能 |
 |------|------|------|
-| `/api/emails/refresh` | POST | 刷新邮件 |
-| `/api/emails` | GET | 获取邮件列表 |
-| `/api/emails/search` | POST | 语义搜索邮件 |
-| `/api/summary/daily` | GET | 获取当日邮件摘要 |
-| `/api/templates` | GET/POST | 获取/创建邮件模板 |
-| `/api/emails/send` | POST | 发送邮件 |
+| `/api/emails/refresh` | POST | 刷新邮件，支持设置天数参数 |
+| `/` | POST | AI代理交互端点，支持邮件搜索、摘要等功能 |
+| `/docs` | GET | Swagger API文档界面 |
 
 ## 忽略的文件和目录
 
@@ -118,4 +105,4 @@ start-dev.bat
 
 ## API文档
 
-启动应用后访问: http://127.0.0.1:8000/docs
+启动应用后访问: http://0.0.0.0:9000/docs

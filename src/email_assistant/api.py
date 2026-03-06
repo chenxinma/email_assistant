@@ -58,9 +58,12 @@ class EmailAttribute(BaseModel):
     content: str
 
 agent = Agent(
-            qwen("qwen3-coder-plus"), 
+            qwen("qwen3-max"), 
             deps_type=Deps,
-            instructions=textwrap.dedent("Be fun!")
+            instructions=textwrap.dedent("""
+                    Be fun!
+                    你是一个邮件智能助手，擅长总结邮件内容，以Markdown形式输出。
+                """)
         )
 
 def get_conn():
@@ -106,7 +109,8 @@ async def search_emails(context: RunContext[Deps], query: str, limit: int = 3) -
 @agent.tool
 async def summarize_daily_emails(context: RunContext[Deps], date:str) -> str:
     """
-    对指定日期的邮件进行总结
+    总结对指定日期的邮件
+
     Args:
         date (str): 日期，格式为YYYY-MM-DD
     Returns:
@@ -126,7 +130,7 @@ async def summarize_daily_emails(context: RunContext[Deps], date:str) -> str:
 @agent.tool
 async def summarize_today_emails(context: RunContext[Deps]) -> str:
     """
-    对今天的邮件进行总结
+    总结我今天收到的邮件
     
     Returns:
         str: 总结

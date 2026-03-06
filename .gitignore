@@ -27,3 +27,6 @@ logs/
 
 
 /*.pid
+
+/.opencode
+/start-cli.sh
